@@ -14,9 +14,9 @@ def create_setup():
 
     architecture_template=r'''#!/usr/bin/env bash
 
-EXPERIMENT_NAME="$(basename $(pwd)/..)"
+EXPERIMENT_NAME="$(basename $(realpath $(pwd)/..))"
 SETUP_ID="$(basename $(pwd))"
-NAME="${EXPERIMENT_NAME}/${SETUP_ID}-mknet"
+NAME="${EXPERIMENT_NAME}.${SETUP_ID}-mknet"
 USER_ID=${UID}
 docker rm -f $NAME
 #rm snapshots/*
@@ -37,9 +37,9 @@ nvidia-docker run --rm \
 
     training_template=r'''#!/usr/bin/env bash
 WD=$(pwd)
-EXPERIMENT_NAME="$(basename $(pwd)/..)"
+EXPERIMENT_NAME="$(basename $(realpath $(pwd)/..))"
 SETUP_ID="$(basename $(pwd))"
-NAME="${EXPERIMENT_NAME}/${SETUP_ID}-training"
+NAME="${EXPERIMENT_NAME}.${SETUP_ID}-training"
 USER_ID=${UID}
 docker rm -f $NAME
 #rm snapshots/*
