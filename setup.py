@@ -18,7 +18,8 @@ entry_points = dict(console_scripts=console_scripts)
 
 packages = [
     'eqip',
-    'eqip.architectures'
+    'eqip.architectures',
+    'eqip.training'
 ]
 
 here = os.path.abspath(os.path.dirname(__file__))
