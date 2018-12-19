@@ -6,8 +6,7 @@ install_requires = [
     'gunpowder',
     'scikit-image>=0.14.1',
     'numpy>=1.15.4',
-    'scipy>=1.1.0',
-    'tensorflow>=1.3.0']
+    'scipy>=1.1.0']
 
 console_scripts = [
     'make-affinities-on-interpolated-ground-truth=eqip.architectures:affinities_on_interpolated_ground_truth',
