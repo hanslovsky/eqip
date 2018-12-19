@@ -191,7 +191,10 @@ def make():
         io_key_affinities      = args.io_key_affinities,
         io_key_gt_affinities   = args.io_key_gt_affinities,
         io_key_affinities_mask = args.io_key_affinities_mask,
-        io_key_gt_labels       = args.io_key_gt_labels
+        io_key_gt_labels       = args.io_key_gt_labels,
+        io_key_loss            = args.io_key_loss,
+        io_key_optimizer       = args.io_key_optimizer,
+        io_key_summary         = args.io_key_summary
     )
     tf.reset_default_graph()
 
