@@ -8,11 +8,11 @@ install_requires = [
     'scipy>=1.1.0']
 
 setup(
-    name='qip',
+    name='eqip',
     version='0.1.0dev',
     author='Philipp Hanslovsky',
     author_email='hanslovskyp@janelia.hhmi.org',
     description='',
-    url='https://github.com/hanslovsky/qip',
+    url='https://github.com/hanslovsky/eqip',
     install_requires=install_requires
 )
