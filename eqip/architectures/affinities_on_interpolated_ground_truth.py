@@ -11,6 +11,9 @@ def _mk_net(
         io_key_affinities,
         io_key_gt_affinities,
         io_key_affinities_mask,
+        io_key_optimizer,
+        io_key_loss,
+        io_key_summary,
         io_key_gt_labels
            ):
     input_shape = (43, 430, 430)
@@ -19,13 +22,12 @@ def _mk_net(
     print("raw shape: ", raw.get_shape().as_list())
 
 
-    def add_mse_loss(affinities, gt_affinities, gt_labels, affinities_mask):
+    def add_mse_loss(affinities, gt_affinities, affinities_mask):
         loss_balanced = tf.losses.mean_squared_error(
-            gt_affinities,
-            affinities,
-            affinities_mask
+            labels = gt_affinities,
+            predictions = affinities,
+            weights = affinities_mask
         )
-        # loss_balanced = tf.placeholder(dtype=tf.float32, shape=affinities.shape)
 
         opt = tf.train.AdamOptimizer(
             learning_rate = 0.5e-4,
@@ -37,23 +39,6 @@ def _mk_net(
         optimizer = opt.minimize(loss_balanced)
 
         return loss_balanced, optimizer
-
-    # def add_malis_loss(affinities, gt_affinities, gt_labels, affinities_mask):
-    # loss          = malis.malis_loss_op(affinities,
-    #                            gt_affinities,
-    #                            gt_labels,
-    #                            malis.mknhood3d(),
-    #                            affinities_mask)
-    #
-    #     opt = tf.train.AdamOptimizer(
-    #         learning_rate = 0.5e-4,
-    #         beta1         = 0.95,
-    #         beta2         = 0.999,
-    #         epsilon       = 1e-8,
-    #         name          = '%s_adam_optimizer' % io_key_malis_prefix)
-    #     optimizer = opt.minimize(loss)
-    #
-    #     return loss, optimizer
 
     voxel_size = (10, 1, 1)
     fov = (10, 1, 1)
@@ -96,20 +81,16 @@ def _mk_net(
     affinities_no_batch = tf.reshape(affinities, output_shape)
     print("affinities shape:", output_shape)
 
-    gt_affinities   = tf.placeholder(tf.float32, shape=output_shape)
-    affinities_mask = tf.placeholder(tf.float32, shape=output_shape)
+    gt_affinities     = tf.placeholder(tf.float32, shape=output_shape)
+    # affinities_mask is used for both mask and scale (for balanced loss)
+    affinities_mask   = tf.placeholder(tf.float32, shape=output_shape)
     # TODO update tensorflow on docker image to use tf.uint64
     gt_labels       = tf.placeholder(tf.int64, shape=output_shape[1:])
 
+    mse_loss, mse_optimizer = add_mse_loss(affinities=affinities_no_batch, gt_affinities=gt_affinities, affinities_mask=affinities_mask)
 
-
-    # def add_mse_loss(affinities, gt_affinities, loss_weights, mask):
-    # mse_loss,   mse_optimizer   = add_mse_loss(affinities=affinities_no_batch, gt_affinities=gt_affinities, gt_labels=gt_labels, affinities_mask=affinities_mask)
-    # malis_loss, malis_optimizer = add_malis_loss(affinities=affinities_no_batch, gt_affinities=gt_affinities, gt_labels=gt_labels, affinities_mask=affinities_mask)
-
-    # tf.summary.scalar('summary_%s_%s' % (io_key_mse_prefix, io_key_loss), mse_loss)
-    # tf.summary.scalar('summary_%s_%s' % (io_key_malis_prefix, io_key_loss), malis_loss)
-    # merged = tf.summary.merge_all()
+    tf.summary.scalar('summary_%s_%s' % (io_key_mse_prefix, io_key_loss), mse_loss)
+    merged = tf.summary.merge_all()
 
     tf.train.export_meta_graph(filename=meta_graph_filename)
 
@@ -119,6 +100,9 @@ def _mk_net(
         io_key_gt_affinities                              : gt_affinities.name,
         io_key_affinities_mask                            : affinities_mask.name,
         io_key_gt_labels                                  : gt_labels.name,
+        '%s_%s' % (io_key_mse_prefix, io_key_optimizer)   : mse_optimizer.name,
+        '%s_%s' % (io_key_mse_prefix, io_key_loss)        : mse_loss.name,
+        io_key_summary                                    : merged.name
     }
 
     with open(net_io_names, 'w') as f:
