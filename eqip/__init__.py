@@ -10,6 +10,7 @@ def create_setup():
     import argparse
     import glob
     import os
+    import stat
     import sys
 
     architecture_template=r'''#!/usr/bin/env bash
@@ -115,6 +116,9 @@ nvidia-docker run --rm \
 
     with open(os.path.join(args.experiment, setup_id, args.train_script_name), 'w') as f:
         f.write(training_script)
+
+    for fn in glob.glob(os.path.join(args.experiment, setup_id, '*.sh')):
+        os.chmod(fn, os.stat(fn).st_mode | stat.S_IEXEC)
 
     print("Created setup %s for experiment %s" % (setup_id, args.experiment))
 
