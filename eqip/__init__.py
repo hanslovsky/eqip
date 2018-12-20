@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 def version():
     from .version import __version__
@@ -71,14 +71,22 @@ nvidia-docker run --rm \
     mknet_args        = argv[indices[0]+1:indices[1]]
     train_args        = argv[indices[1]+1:]
 
+    eqip_version = version()
+
     parser = argparse.ArgumentParser()
     parser.add_argument('experiment')
     parser.add_argument('architecture')
     parser.add_argument('training')
     parser.add_argument('--setup', '-s', type=int, default=None)
-    parser.add_argument('--container', type=str, default='hanslovsky/eqip:%s' % version())
     parser.add_argument('--mknet-script-name', default='mknet.sh')
     parser.add_argument('--train-script-name', default='train.sh')
+
+
+    if 'dev' in eqip_version:
+        parser.add_argument('--container', type=str, required=True)
+    else:
+        parser.add_argument('--container', type=str, default='hanslovsky/eqip:%s' % eqip_version)
+
     args = parser.parse_args(create_setup_args)
 
     def find_max_setup_id(dirs):
