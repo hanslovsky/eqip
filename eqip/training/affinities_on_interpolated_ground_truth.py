@@ -282,7 +282,12 @@ def train():
 
     save_checkpoint_every = args.save_checkpoint_every
 
-    neighborhood = (args.affinity_neighborhood_z, args.affinity_neighborhood_y, args.affinity_neighborhood_x)
+    neighborhood = [] \
+        + [[nh, 0, 0] for nh in args.affinity_neighborhood_z] \
+        + [[0, nh, 0] for nh in args.affinity_neighborhood_y] \
+        + [[0, 0, nh] for nh in args.affinity_neighborhood_x]
+
+    print('Using neighborhood', neighborhood)
 
     logging.basicConfig(level=log_levels[args.log_level])
 
