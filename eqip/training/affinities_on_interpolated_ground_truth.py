@@ -85,7 +85,8 @@ def train_until(
     input_size = Coordinate(input_shape) * input_voxel_size
     output_size = Coordinate(output_shape) * output_voxel_size
 
-    gt_affinities_size = Coordinate((3,) + tuple(s for s in output_size))
+    num_affinities = sum(len(nh) for nh in affinity_neighborhood)
+    gt_affinities_size = Coordinate((num_affinities,) + tuple(s for s in output_size))
     print("gt affinities size", gt_affinities_size)
 
     # TODO why is GT_AFFINITIES three-dimensional? compare to
