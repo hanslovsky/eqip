@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# TODO clone repo into tmp directory and then build
+
 import argparse
 import os
 import subprocess
