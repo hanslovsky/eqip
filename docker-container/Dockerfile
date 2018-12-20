@@ -16,8 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV PIP=pip
 ENV PYTHON=python
 
-RUN ${PIP} install scikit-image
-
 ENV PREFIX=$HOME
 
 #
@@ -86,11 +84,14 @@ RUN git clone ${CNNECTOME_REPOSITORY} . && \
     git checkout ${CNNECTOME_REVISION}
 ENV PYTHONPATH ${CNNECTOME_ROOT}:$PYTHONPATH
 
-ARG EQIP_REVISION=master
-
 #
 # eqip
 #
+RUN ${PIP} install --upgrade scikit-image>=0.14.1
+RUN ${PIP} install --upgrade numpy>=1.15.4
+RUN ${PIP} install --upgrade scipy>=1.1.0
+
+ARG EQIP_REVISION=master
 ENV EQIP_ROOT=${PREFIX}/src/eqip
 ENV EQIP_REPOSITORY=https://github.com/hanslovsky/eqip.git
 
