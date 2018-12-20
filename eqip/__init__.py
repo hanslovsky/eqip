@@ -108,4 +108,6 @@ nvidia-docker run --rm \
     with open(os.path.join(args.experiment, setup_id, args.train_script_name), 'w') as f:
         f.write(training_script)
 
+    print("Created setup %s for experiment %s" % (setup_id, args.experiment))
+
 
