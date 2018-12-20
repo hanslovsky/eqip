@@ -49,7 +49,10 @@ def train_until(
         snapshot_every,
         balance_labels,
         renumber_connected_components,
-        network_inputs):
+        network_inputs,
+        ignore_labels_for_slip):
+
+    ignore_keys_for_slip = (GT_LABELS_KEY,) if ignore_labels_for_slip else ()
 
     data_providers = []
     data_dir   = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/realigned'
@@ -155,7 +158,7 @@ def train_until(
             augmentation_probability=0.5,
             subsample=8
         )
-    train_pipeline += Misalign(z_resolution=360, prob_slip=0.05, prob_shift=0.05, max_misalign=(360,) * 2)
+    train_pipeline += Misalign(z_resolution=360, prob_slip=0.05, prob_shift=0.05, max_misalign=(360,) * 2, ignore_keys_for_slip=ignore_keys_for_slip)
     train_pipeline += SimpleAugment(transpose_only=[1,2])
     train_pipeline += IntensityAugment(RAW_KEY, 0.9, 1.1, -0.1, 0.1, z_section_wise=True)
     train_pipeline += DefectAugment(RAW_KEY,
@@ -259,6 +262,7 @@ def train():
     parser.add_argument('--save-checkpoint-every', type=lambda arg: bounded_integer(arg, 1), default=2000, metavar='N_BETWEEN_CHECKPOINTS', help='Make a checkpoint of the model every Nth iteration.')
     parser.add_argument('--pre-cache-num-workers', type=lambda arg: bounded_integer(arg, 1), default=50, metavar='PRECACHE_NUM_WORKERS', help='Number of workers used to populate pre-cache')
     parser.add_argument('--pre-cache-size', type=lambda arg: bounded_integer(arg, 1), default=100, metavar='PRECACHE_SIZE', help='Size of pre-cache')
+    parser.add_argument('--ignore-labels-for-slip', action='store_true')
 
     args = parser.parse_args()
     log_levels=dict(DEBUG=logging.DEBUG, INFO=logging.INFO, WARN=logging.WARN, ERROR=logging.ERROR, CRITICAL=logging.CRITICAL)
@@ -307,7 +311,8 @@ def train():
             snapshot_every=args.snapshot_every,
             balance_labels=True,
             renumber_connected_components=False,
-            network_inputs=inputs)
+            network_inputs=inputs,
+            ignore_labels_for_slip=args.ignore_labels_for_slip)
 
     if tf.train.latest_checkpoint('.') and int(tf.train.latest_checkpoint('.').split('_')[-1]) < args.mse_iterations:
         raise Exception("Inconsistency!")
@@ -351,4 +356,5 @@ def train():
         snapshot_every=args.snapshot_every,
         balance_labels=False,
         renumber_connected_components=True,
-        network_inputs=inputs)
+        network_inputs=inputs,
+        ignore_labels_for_slip=args.ignore_labels_for_slip)
