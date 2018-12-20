@@ -34,6 +34,7 @@ AFFINITIES_MASK_KEY  = ArrayKey('AFFINITIES_MASK')
 AFFINITIES_SCALE_KEY = ArrayKey('AFFINITIES_SCALE')
 
 def train_until(
+        affinity_neighborhood,
         meta_graph_filename,
         stop,
         input_shape,
@@ -177,7 +178,7 @@ def train_until(
         train_pipeline += RenumberConnectedComponents(labels=GT_LABELS_KEY)
 
     train_pipeline += AddAffinities(
-            malis.mknhood3d(),
+            affinity_neighborhood=affinity_neighborhood,
             labels=GT_LABELS_KEY,
             labels_mask=GT_MASK_KEY,
             affinities=GT_AFFINITIES_KEY,
@@ -263,6 +264,9 @@ def train():
     parser.add_argument('--pre-cache-num-workers', type=lambda arg: bounded_integer(arg, 1), default=50, metavar='PRECACHE_NUM_WORKERS', help='Number of workers used to populate pre-cache')
     parser.add_argument('--pre-cache-size', type=lambda arg: bounded_integer(arg, 1), default=100, metavar='PRECACHE_SIZE', help='Size of pre-cache')
     parser.add_argument('--ignore-labels-for-slip', action='store_true')
+    parser.add_argument('--affinity-neighborhood-x', nargs='+', type=int, default=(-1,))
+    parser.add_argument('--affinity-neighborhood-y', nargs='+', type=int, default=(-1,))
+    parser.add_argument('--affinity-neighborhood-z', nargs='+', type=int, default=(-1,))
 
     args = parser.parse_args()
     log_levels=dict(DEBUG=logging.DEBUG, INFO=logging.INFO, WARN=logging.WARN, ERROR=logging.ERROR, CRITICAL=logging.CRITICAL)
@@ -276,6 +280,8 @@ def train():
         net_io_names = json.load(f)
 
     save_checkpoint_every = args.save_checkpoint_every
+
+    neighborhood = (args.affinity_neighborhood_z, args.affinity_neighborhood_y, args.affinity_neighborhood_x)
 
     logging.basicConfig(level=log_levels[args.log_level])
 
@@ -296,6 +302,7 @@ def train():
     if trained_until < args.mse_iterations:
 
         train_until(
+            affinity_neighborhood=neighborhood,
             meta_graph_filename=args.meta_graph_filename,
             stop=args.mse_iterations - trained_until,
             input_shape=args.input_shape,
@@ -326,7 +333,7 @@ def train():
             affs = affinities,
             gt_affs = gt_affinities,
             gt_seg = gt_labels,
-            neighborhood = malis.mknhood3d(),
+            neighborhood = neighborhood,
             gt_aff_mask = affinities_mask)
         opt = tf.train.AdamOptimizer(
                     learning_rate = 0.5e-4,
@@ -341,6 +348,7 @@ def train():
         return loss, optimizer
 
     train_until(
+        affinity_neighborhood=neighborhood,
         meta_graph_filename=args.meta_graph_filename,
         stop=args.malis_iterations - (trained_until - args.mse_iterations),
         input_shape=args.input_shape,

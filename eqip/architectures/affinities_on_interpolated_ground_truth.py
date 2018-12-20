@@ -14,7 +14,8 @@ def _mk_net(
         io_key_optimizer,
         io_key_loss,
         io_key_summary,
-        io_key_gt_labels
+        io_key_gt_labels,
+        num_final_features
            ):
     input_shape = (43, 430, 430)
     raw = tf.placeholder(tf.float32, shape=input_shape)
@@ -70,7 +71,7 @@ def _mk_net(
     affinities, fov = ops3d.conv_pass(
             convolved_last,
             kernel_size=[[1, 1, 1]],
-            num_fmaps=3,
+            num_fmaps=num_final_features,
             activation=None,
             fov=fov,
             voxel_size=voxel_size
@@ -180,6 +181,7 @@ def make():
     parser.add_argument('--io-key-loss', type=str, default='loss')
     parser.add_argument('--io-key-summary', type=str, default='summary')
     parser.add_argument('--io-key-gt-labels', type=str, default='gt_labels')
+    parser.add_argument('--num-affinities', type=int, default=3)
 
     args = parser.parse_args()
 
