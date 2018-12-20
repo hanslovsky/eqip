@@ -52,7 +52,7 @@ def train_until(
         network_inputs,
         ignore_labels_for_slip):
 
-    ignore_keys_for_slip = (GT_LABELS_KEY,) if ignore_labels_for_slip else ()
+    ignore_keys_for_slip = (GT_LABELS_KEY, GT_MASK_KEY) if ignore_labels_for_slip else ()
 
     data_providers = []
     data_dir   = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/realigned'
