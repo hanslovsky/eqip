@@ -186,6 +186,7 @@ def make():
     args = parser.parse_args()
 
     _mk_net(
+        num_final_features     = args.num_affinities,
         meta_graph_filename    = args.meta_graph_filename,
         net_io_names           = args.net_io_names,
         io_key_mse_prefix      = args.io_key_mse_prefix,
