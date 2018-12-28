@@ -51,7 +51,8 @@ def train_until(
         balance_labels,
         renumber_connected_components,
         network_inputs,
-        ignore_labels_for_slip):
+        ignore_labels_for_slip,
+        grow_boundaries):
 
     ignore_keys_for_slip = (GT_LABELS_KEY, GT_MASK_KEY) if ignore_labels_for_slip else ()
 
@@ -173,7 +174,8 @@ def train_until(
                       contrast_scale=0.5)
     train_pipeline += IntensityScaleShift(RAW_KEY, 2, -1)
     train_pipeline += ZeroOutConstSections(RAW_KEY)
-    train_pipeline += GrowBoundary(GT_LABELS_KEY, GT_MASK_KEY, steps=1, only_xy=True)
+    if grow_boundaries > 0:
+        train_pipeline += GrowBoundary(GT_LABELS_KEY, GT_MASK_KEY, steps=grow_boundaries, only_xy=True)
 
     if renumber_connected_components:
         train_pipeline += RenumberConnectedComponents(labels=GT_LABELS_KEY)
@@ -268,6 +270,7 @@ def train():
     parser.add_argument('--affinity-neighborhood-x', nargs='+', type=int, default=(-1,))
     parser.add_argument('--affinity-neighborhood-y', nargs='+', type=int, default=(-1,))
     parser.add_argument('--affinity-neighborhood-z', nargs='+', type=int, default=(-1,))
+    parser.add_argument('--grow-boundaries', metavar='STEPS', type=int, default=0, help='Grow boundaries for STEPS if larger than 0.')
 
     args = parser.parse_args()
     log_levels=dict(DEBUG=logging.DEBUG, INFO=logging.INFO, WARN=logging.WARN, ERROR=logging.ERROR, CRITICAL=logging.CRITICAL)
@@ -325,7 +328,8 @@ def train():
             balance_labels=True,
             renumber_connected_components=False,
             network_inputs=inputs,
-            ignore_labels_for_slip=args.ignore_labels_for_slip)
+            ignore_labels_for_slip=args.ignore_labels_for_slip,
+            grow_boundaries=args.grow_boundaries)
 
     if tf.train.latest_checkpoint('.') and int(tf.train.latest_checkpoint('.').split('_')[-1]) < args.mse_iterations:
         raise Exception("Inconsistency!")
@@ -371,4 +375,5 @@ def train():
         balance_labels=False,
         renumber_connected_components=True,
         network_inputs=inputs,
-        ignore_labels_for_slip=args.ignore_labels_for_slip)
+        ignore_labels_for_slip=args.ignore_labels_for_slip,
+        grow_boundaries=args.grow_boundaries)
