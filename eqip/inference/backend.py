@@ -64,7 +64,8 @@ def predict(
 
     print("Starting prediction...")
     scan_request = BatchRequest()
-    scan_request[AFFS] = ArraySpec(roi=output_roi_world.shift(chunk_request[AFFS].roi.get_begin()), voxel_size=output_voxel_size)
+    scan_request[AFFS] = ArraySpec(roi=output_roi_world, voxel_size=output_voxel_size)
+    # scan_request[AFFS] = ArraySpec(roi=output_roi_world.shift(chunk_request[AFFS].roi.get_begin()), voxel_size=output_voxel_size)
     # scan_request.add(AFFS, shape=output_roi_world.shift(chunk_request[AFFS].roi.get_begin()), voxel_size=output_voxel_size)
     with build(pipeline):
         pipeline.request_batch(scan_request)
@@ -105,7 +106,7 @@ if __name__ == "__main__":
         '''
 
         def _get_array_attribute(self, dataset, attribute, fallback_value, revert=False):
-            val = dataset.attrs[attribute] if attribute in dataset.attrs else [fallback_value] * 3#len(dataset.shape)
+            val = dataset.attrs[attribute] if attribute in dataset.attrs else [fallback_value] * 3
             return val[::-1] if revert else val
 
         def _revert(self):
@@ -201,10 +202,11 @@ if __name__ == "__main__":
 
     experiment_directory = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/15/'
     input_container = '/groups/saalfeld/home/hanslovskyp/data/cremi/sample_A+_padded_20160601-bs=64.n5'
+    input_dataset = 'volumes/raw/data/s0'
     output_dir = '/groups/saalfeld/home/hanslovskyp/data/cremi'
-    output_container = 'prediction.n5'
+    output_container = 'prediction-full.n5'
     output_dataset = 'volumes/affinities/predictions'
-    input_source = Z5Source(input_container, datasets={_RAW: 'volumes/raw/data/s0'}, array_specs={_RAW: ArraySpec(voxel_size=input_voxel_size)})
+    input_source = Z5Source(input_container, datasets={_RAW: input_dataset}, array_specs={_RAW: ArraySpec(voxel_size=input_voxel_size)})
     output_write = Z5Write(
         output_filename=output_container,
         output_dir=output_dir,
@@ -217,23 +219,35 @@ if __name__ == "__main__":
     network_output_shape = Coordinate((209, 214, 214))
     # network_output_shape = Coordinate((65, 70, 70))
     network_output_shape_world = Coordinate(tuple(n * o for n, o in zip(network_output_shape, output_voxel_size)))
-    shape_diff = (network_output_shape_world - network_input_shape_world)
+    shape_diff = network_input_shape_world - network_output_shape_world
     roi = tuple(f * s for f, s in zip((3, 3, 3), network_output_shape))
     roi_world = Coordinate(tuple(r * o for r, o in zip(roi, output_voxel_size)))
     input_placeholder_tensor="Placeholder:0",
     output_placeholder_tensor="Reshape_1:0"
 
+    with z5py.File(path=input_container, use_zarr_format=False, mode='r') as f:
+        ds = f[input_dataset]
+        input_dataset_size = ds.shape
+    input_dataset_size_world  = Coordinate(tuple(vs * s for vs, s in zip(input_voxel_size, input_dataset_size)))
+    output_dataset_size_world = input_dataset_size_world - shape_diff
+    output_dataset_roi_world  = Roi(shape=output_dataset_size_world, offset=shape_diff / 2).snap_to_grid(output_voxel_size, mode='shrink')
+    output_dataset_roi        = output_dataset_roi_world / output_voxel_size
+
+    print("LOL?", output_dataset_size_world, input_dataset_size_world)
+
     with z5py.File(path=os.path.join(output_dir, output_container), use_zarr_format=False) as f:
-        f.require_dataset(
+        ds = f.require_dataset(
             name=output_dataset,
-            shape=
-            (3,) + roi,
+            shape=(3,) + output_dataset_roi.get_shape(),
             dtype=np.float32,
             chunks = (3,) + tuple(s for s in network_output_shape),
             compression='raw'
         )
-        f[output_dataset].attrs['resolution'] = (120.0, 108.0, 108.0)
-        f[output_dataset].attrs['offset'] = tuple(sd / 2 for sd in shape_diff)
+        ds.attrs['resolution'] = (120.0, 108.0, 108.0)
+        ds.attrs['offset'] = tuple(s for s in output_dataset_roi_world.get_begin()) #tuple(sd / 2 for sd in shape_diff)
+
+    print("Predicting for roi", output_dataset_roi_world, output_dataset_roi)
+    print("shape diff", shape_diff)
 
 
     predict(
@@ -241,20 +255,9 @@ if __name__ == "__main__":
         iteration=iteration,
         input_source=input_source,
         output_write=output_write,
-        output_roi_world=Roi(shape=roi_world, offset=(0,) * len(roi_world)),
+        output_roi_world=output_dataset_roi_world,#Roi(shape=roi_world, offset=(0,) * len(roi_world)),
         input_chunk_size_world=network_input_shape_world,
         output_chunk_size_world=network_output_shape_world,
         input_placeholder_tensor=input_placeholder_tensor,
         output_placeholder_tensor=output_placeholder_tensor,
     )
-
-    # experiment_directory,
-    # iteration,
-    # input_source,
-    # output_write,
-    # output_roi_world,
-    # output_chunk_size_world,
-    # input_placeholder_tensor,
-    # output_placeholder_tensor,
-    # graph_meta = 'unet-inference.meta',
-    # weight_graph_pattern = 'unet_net_checkpoint_%d',
