@@ -38,7 +38,7 @@ docker_cmd = [
               'build',
               '--build-arg', 'EQIP_REVISION=%s' % revision,
               '-t', '%s:%s' % (args.repository, version), 
-              os.path.join(here, 'docker-container')]
+              os.path.join(here, 'docker-container', 'train-2.7')]
 
 print(docker_cmd)
 
