@@ -56,15 +56,6 @@ RUN ${PIP} install -r requirements.txt
 RUN ${PYTHON} setup.py build_ext --inplace
 ENV PYTHONPATH ${GUNPOWDER_ROOT}:$PYTHONPATH
 
-ARG EQIP_REVISION=master
-ENV EQIP_ROOT=${PREFIX}/src/eqip
-ENV EQIP_REPOSITORY=https://github.com/hanslovsky/eqip.git
-
-WORKDIR ${EQIP_ROOT}
-RUN git clone ${EQIP_REPOSITORY} . && \
-    git checkout ${EQIP_REVISION} && \
-    ${PIP} install .
-
 
 
 
@@ -183,5 +174,23 @@ RUN cmake \
     -DBoost_LIBRARY_DIR_DEBUG=/usr/local/lib \
     .
 RUN make -j $NUM_MAKE_CORES
-ENV PYTHONPATH ${Z5_ROOT}:$PYTHONPATH
+RUN make install
+
+ARG DAISY_REVISION=74b7354
+ENV DAISY_ROOT=${PREFIX}/src/daisy
+ENV DAISY_REPOSITORY=https://github.com/funkelab/daisy.git
+
+WORKDIR ${DAISY_ROOT}
+RUN git clone ${DAISY_REPOSITORY} . && \
+    git checkout ${DAISY_REVISION} && \
+    ${PIP} install .
+
+ARG EQIP_REVISION=master
+ENV EQIP_ROOT=${PREFIX}/src/eqip
+ENV EQIP_REPOSITORY=https://github.com/hanslovsky/eqip.git
+
+WORKDIR ${EQIP_ROOT}
+RUN git clone ${EQIP_REPOSITORY} . && \
+    git checkout ${EQIP_REVISION} && \
+    ${PIP} install .
 
