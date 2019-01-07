@@ -11,7 +11,8 @@ install_requires = [
 console_scripts = [
     'make-affinities-on-interpolated-ground-truth=eqip.architectures:affinities_on_interpolated_ground_truth',
     'train-affinities-on-interpolated-ground-truth=eqip.training:affinities_on_interpolated_ground_truth',
-    'create-setup=eqip:create_setup'
+    'create-setup=eqip:create_setup',
+    'predict-affinities=eqip.inference:predict_affinities_daisy'
 ]
 
 entry_points = dict(console_scripts=console_scripts)
@@ -19,7 +20,8 @@ entry_points = dict(console_scripts=console_scripts)
 packages = [
     'eqip',
     'eqip.architectures',
-    'eqip.training'
+    'eqip.training',
+    'eqip.inference'
 ]
 
 here = os.path.abspath(os.path.dirname(__file__))
