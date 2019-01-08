@@ -252,8 +252,6 @@ def predict_affinities_daisy():
     network_output_shape = Coordinate(args.network_output_shape)
     network_output_shape_world = Coordinate(tuple(n * o for n, o in zip(network_output_shape, output_voxel_size)))
     shape_diff = network_input_shape_world - network_output_shape_world
-    roi = tuple(f * s for f, s in zip((3, 3, 3), network_output_shape))
-    roi_world = Coordinate(tuple(r * o for r, o in zip(roi, output_voxel_size)))
     input_placeholder_tensor = args.input_placeholder_tensor
     output_placeholder_tensor = args.output_placeholder_tensor
 
