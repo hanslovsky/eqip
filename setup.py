@@ -8,14 +8,15 @@ install_requires = [
     'numpy>=1.15.4',
     'scipy>=1.1.0',
     'daisy',
-    'z5py',
+    #'z5py',
 ]
 
 console_scripts = [
     'make-affinities-on-interpolated-ground-truth=eqip.architectures:affinities_on_interpolated_ground_truth',
     'train-affinities-on-interpolated-ground-truth=eqip.training:affinities_on_interpolated_ground_truth',
     'create-setup=eqip:create_setup',
-    'predict-affinities=eqip.inference:predict_affinities_daisy'
+    'predict-affinities=eqip.inference:predict_affinities_daisy',
+    'list-latest-checkpoint=eqip:list_latest_checkpoint'
 ]
 
 entry_points = dict(console_scripts=console_scripts)

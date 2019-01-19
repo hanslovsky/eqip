@@ -1,5 +1,7 @@
 from __future__ import absolute_import, print_function
 
+from .experiment_utils import list_latest_checkpoint
+
 def version():
     from .version import __version__
     return __version__
