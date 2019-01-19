@@ -110,7 +110,7 @@ def _mk_net(
         json.dump(names, f)
 
 
-def _inference_net(unet_inference_meta):
+def _inference_net(unet_inference_meta, num_final_features):
     input_shape = (91, 862, 862)
     raw = tf.placeholder(tf.float32, shape=input_shape)
     raw_batched = tf.reshape(raw, (1, 1,) + input_shape)
@@ -146,7 +146,7 @@ def _inference_net(unet_inference_meta):
     affinities, fov = ops3d.conv_pass(
         convolved_last,
         kernel_size=[[1, 1, 1]],
-        num_fmaps=3,
+        num_fmaps=num_final_features,
         activation=None,
         fov=fov,
         voxel_size=voxel_size
@@ -202,6 +202,11 @@ def make():
     tf.reset_default_graph()
 
     if args.inference_meta_graph_filename is not None:
-        _inference_net(unet_inference_meta=args.inference_meta_graph_filename)
+        _inference_net(
+            num_final_features  = args.num_affinities,
+            unet_inference_meta = args.inference_meta_graph_filename)
 
     print('Using tensorflow version', tf.__version__)
+
+if __name__ == '__main__':
+    make()
