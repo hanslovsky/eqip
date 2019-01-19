@@ -265,12 +265,15 @@ def predict_affinities_daisy():
 
     num_channels = args.num_channels
 
+
+    if not os.path.isdir(output_container):
+        os.makedirs(output_container)
     with z5py.File(output_container, use_zarr_format=False) as f:
         ds = f.require_dataset(
             name=output_dataset,
             shape=(num_channels,) + output_dataset_roi.get_shape() if num_channels > 0 else output_dataset_roi.get_shape(),
             dtype=np.float32,
-            chunks = (num_channels,) + tuple(network_output_shape) if num_channels > 0 else tuple(network_output_shape),
+            chunks = (1,) + tuple(network_output_shape) if num_channels > 0 else tuple(network_output_shape),
             compression='raw')
         ds.attrs['resolution'] = args.output_voxel_size[::-1]
         ds.attrs['offset'] = output_dataset_roi_world.get_begin()[::-1]
