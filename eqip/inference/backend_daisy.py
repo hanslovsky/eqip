@@ -259,8 +259,10 @@ def predict_affinities_daisy():
         ds = f[input_dataset]
         input_dataset_size = ds.shape
     input_dataset_size_world  = Coordinate(tuple(vs * s for vs, s in zip(input_voxel_size, input_dataset_size)))
-    output_dataset_size_world = input_dataset_size_world - shape_diff
-    output_dataset_roi_world  = Roi(shape=output_dataset_size_world, offset=shape_diff / 2).snap_to_grid(output_voxel_size, mode='shrink')
+    output_dataset_roi_world = Roi(shape=input_dataset_size_world, offset = Coordinate((0,) * len(input_dataset_size_world)))
+    output_dataset_roi_world = output_dataset_roi_world.snap_to_grid(network_output_shape_world, mode='grow')
+    # output_dataset_size_world = input_dataset_size_world - shape_diff
+    # output_dataset_roi_world  = Roi(shape=output_dataset_size_world, offset=shape_diff / 2).snap_to_grid(output_voxel_size, mode='shrink')
     output_dataset_roi        = output_dataset_roi_world / output_voxel_size
 
     num_channels = args.num_channels
@@ -303,13 +305,16 @@ def predict_affinities_daisy():
         RAW=input_key,
         AFFS=output_key)
 
+    total_roi = output_dataset_roi_world
+    # total_roi = Roi(shape=input_dataset_size_world, offset=Coordinate((0,) * len(input_dataset_size_world)))
     _logger.info('Running blockwise!')
     daisy.run_blockwise(
-        total_roi=output_dataset_roi_world,
+        total_roi=total_roi,
         read_roi=Roi(shape=network_input_shape_world, offset=Coordinate((0,) * len(input_voxel_size))),
         write_roi=Roi(shape=network_output_shape_world, offset=shape_diff / 2),
         process_function=process_function,
-        num_workers=num_workers)
+        num_workers=num_workers,
+        read_write_conflict=False)
 
 if __name__ == '__main__':
     predict_affinities_daisy()
