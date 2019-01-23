@@ -15,6 +15,7 @@ def _mk_net(
         io_key_loss,
         io_key_summary,
         io_key_gt_labels,
+        io_key_affinities_cropped,
         num_final_features
            ):
     input_shape = (43, 430, 430)
@@ -77,6 +78,10 @@ def _mk_net(
             voxel_size=voxel_size
             )
 
+    cropped_shape = affinities.get_shape().as_list()
+    cropped_shape[-3] = cropped_shape[-3] - 2
+    affinities_cropped = ops3d.crop_zyx(affinities, cropped_shape)
+
     output_shape_batched = affinities.get_shape().as_list()
     output_shape = output_shape_batched[1:]  # strip the batch dimension
     affinities_no_batch = tf.reshape(affinities, output_shape)
@@ -103,7 +108,8 @@ def _mk_net(
         io_key_gt_labels                                  : gt_labels.name,
         '%s_%s' % (io_key_mse_prefix, io_key_optimizer)   : mse_optimizer.name,
         '%s_%s' % (io_key_mse_prefix, io_key_loss)        : mse_loss.name,
-        io_key_summary                                    : merged.name
+        io_key_summary                                    : merged.name,
+        io_key_affinities_cropped                         : affinities_cropped.name
     }
 
     with open(net_io_names, 'w') as f:
@@ -152,6 +158,10 @@ def _inference_net(unet_inference_meta, num_final_features):
         voxel_size=voxel_size
     )
 
+    cropped_shape = affinities.get_shape().as_list()
+    cropped_shape[-3] = cropped_shape[-3] - 2
+    affinities = ops3d.crop_zyx(affinities, cropped_shape)
+
     output_shape_batched = affinities.get_shape().as_list()
     output_shape = output_shape_batched[1:]  # strip the batch dimension
     print("affinities shape:", output_shape)
@@ -177,6 +187,8 @@ def make():
     parser.add_argument('--io-key-affinities', type=str, default='affinities')
     parser.add_argument('--io-key-gt-affinities', type=str, default='gt_affinities')
     parser.add_argument('--io-key-affinities-mask', type=str, default='affinities_mask')
+
+    parser.add_argument('--io-key-affinities-cropped', type=str, default='affinities_cropped')
     parser.add_argument('--io-key-optimizer', type=str, default='optimizer')
     parser.add_argument('--io-key-loss', type=str, default='loss')
     parser.add_argument('--io-key-summary', type=str, default='summary')
@@ -186,18 +198,19 @@ def make():
     args = parser.parse_args()
 
     _mk_net(
-        num_final_features     = args.num_affinities,
-        meta_graph_filename    = args.meta_graph_filename,
-        net_io_names           = args.net_io_names,
-        io_key_mse_prefix      = args.io_key_mse_prefix,
-        io_key_raw             = args.io_key_raw,
-        io_key_affinities      = args.io_key_affinities,
-        io_key_gt_affinities   = args.io_key_gt_affinities,
-        io_key_affinities_mask = args.io_key_affinities_mask,
-        io_key_gt_labels       = args.io_key_gt_labels,
-        io_key_loss            = args.io_key_loss,
-        io_key_optimizer       = args.io_key_optimizer,
-        io_key_summary         = args.io_key_summary
+        num_final_features        = args.num_affinities,
+        meta_graph_filename       = args.meta_graph_filename,
+        net_io_names              = args.net_io_names,
+        io_key_mse_prefix         = args.io_key_mse_prefix,
+        io_key_raw                = args.io_key_raw,
+        io_key_affinities         = args.io_key_affinities,
+        io_key_gt_affinities      = args.io_key_gt_affinities,
+        io_key_affinities_mask    = args.io_key_affinities_mask,
+        io_key_gt_labels          = args.io_key_gt_labels,
+        io_key_loss               = args.io_key_loss,
+        io_key_optimizer          = args.io_key_optimizer,
+        io_key_summary            = args.io_key_summary,
+        io_key_affinities_cropped = args.io_key_affinities_cropped
     )
     tf.reset_default_graph()
 
