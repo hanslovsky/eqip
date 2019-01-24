@@ -79,6 +79,7 @@ def make_process_function(
                 block = scheduler.acquire_block()
                 if block is None:
                     break
+
                 request = BatchRequest()
                 request[RAW] = ArraySpec(roi=block.read_roi, voxel_size=input_voxel_size)
                 request[AFFS] = ArraySpec(roi=block.write_roi, voxel_size=output_voxel_size)
@@ -251,7 +252,7 @@ def predict_affinities_daisy():
     network_input_shape_world = Coordinate(tuple(n * i for n, i in zip(network_input_shape, input_voxel_size)))
     network_output_shape = Coordinate(args.network_output_shape)
     network_output_shape_world = Coordinate(tuple(n * o for n, o in zip(network_output_shape, output_voxel_size)))
-    shape_diff = network_input_shape_world - network_output_shape_world
+    shape_diff_world = network_input_shape_world - network_output_shape_world
     input_placeholder_tensor = args.input_placeholder_tensor
     output_placeholder_tensor = args.output_placeholder_tensor
 
@@ -259,13 +260,19 @@ def predict_affinities_daisy():
         ds = f[input_dataset]
         input_dataset_size = ds.shape
     input_dataset_size_world  = Coordinate(tuple(vs * s for vs, s in zip(input_voxel_size, input_dataset_size)))
-    output_dataset_roi_world = Roi(shape=input_dataset_size_world, offset = Coordinate((0,) * len(input_dataset_size_world)))
+    output_dataset_roi_world = Roi(
+        shape=input_dataset_size_world,
+        offset = Coordinate((0,) * len(input_dataset_size_world)))
     output_dataset_roi_world = output_dataset_roi_world.snap_to_grid(network_output_shape_world, mode='grow')
-    # output_dataset_size_world = input_dataset_size_world - shape_diff
-    # output_dataset_roi_world  = Roi(shape=output_dataset_size_world, offset=shape_diff / 2).snap_to_grid(output_voxel_size, mode='shrink')
-    output_dataset_roi        = output_dataset_roi_world / output_voxel_size
+    output_dataset_roi = output_dataset_roi_world / output_voxel_size
 
     num_channels = args.num_channels
+
+    _logger.info('input dataset size world:   %s', input_dataset_size_world)
+    _logger.info('output dataset roi world:   %s', output_dataset_roi_world)
+    _logger.info('output datset roi:          %s', output_dataset_roi)
+    _logger.info('output network size:        %s', network_output_shape)
+    _logger.info('output network size world:  %s', network_output_shape_world)
 
 
     if not os.path.isdir(output_container):
@@ -305,13 +312,17 @@ def predict_affinities_daisy():
         RAW=input_key,
         AFFS=output_key)
 
-    total_roi = output_dataset_roi_world
-    # total_roi = Roi(shape=input_dataset_size_world, offset=Coordinate((0,) * len(input_dataset_size_world)))
+    total_roi = output_dataset_roi_world.grow(amount_neg=shape_diff_world / 2, amount_pos=shape_diff_world / 2)
+    read_roi  = Roi(shape=network_input_shape_world, offset=-shape_diff_world / 2)
+    write_roi = Roi(shape=network_output_shape_world, offset=Coordinate((0,) * len(input_voxel_size)))
     _logger.info('Running blockwise!')
+    _logger.info('total roi:   %s', total_roi)
+    _logger.info('read  roi:   %s', read_roi)
+    _logger.info('write roi:   %s', write_roi)
     daisy.run_blockwise(
         total_roi=total_roi,
-        read_roi=Roi(shape=network_input_shape_world, offset=Coordinate((0,) * len(input_voxel_size))),
-        write_roi=Roi(shape=network_output_shape_world, offset=shape_diff / 2),
+        read_roi=read_roi,
+        write_roi=write_roi,
         process_function=process_function,
         num_workers=num_workers,
         read_write_conflict=False)
