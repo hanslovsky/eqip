@@ -7,7 +7,8 @@ import os
 import subprocess
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--repository', default='hanslovsky/eqip')
+parser.add_argument('--repository', default='hanslovsky')
+parser.add_argument('--name', required=True)
 parser.add_argument('--version', default=None)
 parser.add_argument('--revision', default=None)
 parser.add_argument('--container', required=True)
@@ -34,12 +35,19 @@ def get_appropriate_version(version, revision):
 revision = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('ascii') if args.revision is None else args.revision
 version  = get_appropriate_version(version['__version__'], revision) if args.version is None else args.version
 
-docker_cmd = [
-              'docker',
-              'build',
-              '--build-arg', 'EQIP_REVISION=%s' % revision,
-              '-t', '%s:%s' % (args.repository, version), 
-              os.path.join(here, 'docker-container', args.container)]
+if args.name is None:
+    tag = []
+elif version is None:
+    tag = ['-t', '%s/%s' % (args.repository, args.name)]
+else:
+    tag = ['-t', '%s/%s:%s' % (args.repository, args.name, version)]
+
+
+
+docker_cmd = [] + \
+  ['docker', 'build', '--build-arg', 'EQIP_REVISION=%s' % revision] + \
+  tag + \
+  [os.path.join(here, 'docker-container', args.container)]
 
 print(docker_cmd)
 
