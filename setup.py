@@ -8,12 +8,16 @@ install_requires = [
     'numpy>=1.15.4',
     'scipy>=1.1.0',
     'daisy',
+    'malis',
+    'augment @ git+https://github.com/funkey/augment'
     #'z5py',
 ]
 
 console_scripts = [
     'make-affinities-on-interpolated-ground-truth=eqip.architectures:affinities_on_interpolated_ground_truth',
+    'make-affinities-on-interpolated-ground-truth-combine-affinities=eqip.architectures:affinities_on_interpolated_ground_truth_combine_affinities',
     'train-affinities-on-interpolated-ground-truth=eqip.training:affinities_on_interpolated_ground_truth',
+    'train-affinities-on-interpolated-ground-truth-combine-affinities=eqip.training:affinities_on_interpolated_ground_truth_combine_affinities',
     'create-setup=eqip:create_setup',
     'predict-affinities=eqip.inference:predict_affinities_daisy',
     'list-latest-checkpoint=eqip:list_latest_checkpoint',

@@ -1,3 +1,4 @@
 from __future__ import absolute_import
 
 from .affinities_on_interpolated_ground_truth import make as affinities_on_interpolated_ground_truth
+from .affinities_on_interpolated_ground_truth_combine_affinities import make as affinities_on_interpolated_ground_truth_combine_affinities
