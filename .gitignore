@@ -102,3 +102,10 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# eqip stuff
+net_io_names.json
+unet-inference.meta
+unet.meta
+snapshots
+log
