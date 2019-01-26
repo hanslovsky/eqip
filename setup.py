@@ -6,12 +6,18 @@ install_requires = [
     'gunpowder',
     'scikit-image>=0.14.1',
     'numpy>=1.15.4',
-    'scipy>=1.1.0']
+    'scipy>=1.1.0',
+    'daisy',
+    #'z5py',
+]
 
 console_scripts = [
     'make-affinities-on-interpolated-ground-truth=eqip.architectures:affinities_on_interpolated_ground_truth',
     'train-affinities-on-interpolated-ground-truth=eqip.training:affinities_on_interpolated_ground_truth',
-    'create-setup=eqip:create_setup'
+    'create-setup=eqip:create_setup',
+    'predict-affinities=eqip.inference:predict_affinities_daisy',
+    'list-latest-checkpoint=eqip:list_latest_checkpoint',
+    'list-latest-snapshot=eqip:list_latest_snapshot'
 ]
 
 entry_points = dict(console_scripts=console_scripts)
@@ -19,7 +25,8 @@ entry_points = dict(console_scripts=console_scripts)
 packages = [
     'eqip',
     'eqip.architectures',
-    'eqip.training'
+    'eqip.training',
+    'eqip.inference'
 ]
 
 here = os.path.abspath(os.path.dirname(__file__))

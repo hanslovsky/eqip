@@ -10,6 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--repository', default='hanslovsky/eqip')
 parser.add_argument('--version', default=None)
 parser.add_argument('--revision', default=None)
+parser.add_argument('--container', required=True)
 
 args = parser.parse_args()
 
@@ -38,7 +39,7 @@ docker_cmd = [
               'build',
               '--build-arg', 'EQIP_REVISION=%s' % revision,
               '-t', '%s:%s' % (args.repository, version), 
-              os.path.join(here, 'docker-container')]
+              os.path.join(here, 'docker-container', args.container)]
 
 print(docker_cmd)
 
