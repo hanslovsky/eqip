@@ -8,7 +8,8 @@ install_requires = [
     'numpy>=1.15.4',
     'scipy>=1.1.0',
     'daisy',
-    'malis'
+    'malis',
+    'augment @ git+https://github.com/funkey/augment'
     #'z5py',
 ]
 
