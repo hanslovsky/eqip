@@ -2,6 +2,10 @@ from __future__ import print_function
 import glob
 
 import logging
+_logger = logging.getLogger(__name__)
+
+import itertools
+
 logging.basicConfig(level=logging.INFO)
 
 from gpn import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment
@@ -34,7 +38,13 @@ AFFINITIES_MASK_KEY  = ArrayKey('AFFINITIES_MASK')
 AFFINITIES_SCALE_KEY = ArrayKey('AFFINITIES_SCALE')
 AFFINITIES_NN_KEY    = ArrayKey('AFFINITIES_NN')
 
+DEFAULT_PATHS = dict(
+    raw    = 'volumes/raw',
+    labels = 'volumes/labels/neuron_ids-downsampled',
+    mask   = 'volumes/masks/neuron_ids-downsampled')
+
 def train_until(
+        data_providers,
         affinity_neighborhood,
         meta_graph_filename,
         stop,
@@ -58,8 +68,6 @@ def train_until(
 
     ignore_keys_for_slip = (GT_LABELS_KEY, GT_MASK_KEY) if ignore_labels_for_slip else ()
 
-    data_providers = []
-    data_dir   = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/realigned'
     defect_dir = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/defects'
     if tf.train.latest_checkpoint('.'):
         trained_until = int(tf.train.latest_checkpoint('.').split('_')[-1])
@@ -67,20 +75,6 @@ def train_until(
     else:
         trained_until = 0
         print('Starting fresh training')
-    file_pattern = '*merged*fixed-offset-fixed-mask.h5'
-    for data in glob.glob(os.path.join(data_dir, file_pattern)):
-        h5_source = Hdf5Source(
-            data,
-            datasets={
-                RAW_KEY       : 'volumes/raw',
-                GT_LABELS_KEY : 'volumes/labels/neuron_ids-downsampled',
-                GT_MASK_KEY   : 'volumes/masks/neuron_ids-downsampled',
-            },
-            array_specs={
-                GT_MASK_KEY : ArraySpec(interpolatable=False)
-            }
-        )
-        data_providers.append(h5_source)
 
     input_voxel_size = Coordinate((120, 12, 12)) * 3
     output_voxel_size = Coordinate((40, 36, 36)) * 3
@@ -240,6 +234,36 @@ def train_until(
 
     print("Training finished")
 
+def make_data_providers(*provider_strings):
+    return tuple(itertools.chain.from_iterable(tuple(make_data_provider(s) for s in provider_strings)))
+
+
+def make_data_provider(provider_string):
+    data_providers = []
+    # data_dir = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/realigned'
+    # file_pattern = '*merged*fixed-offset-fixed-mask.h5'
+
+
+    pattern = provider_string.split(':')[0]
+    paths   = {**DEFAULT_PATHS}
+    paths.update(**{entry.split('=')[0].lower() : entry.split('=')[1] for entry in provider_string.split(':')[1:]})
+
+
+    for data in glob.glob(pattern):
+        h5_source = Hdf5Source(
+            data,
+            datasets={
+                RAW_KEY: paths['raw'],
+                GT_LABELS_KEY: paths['labels'],
+                GT_MASK_KEY: paths['mask']
+                },
+            array_specs={
+                GT_MASK_KEY: ArraySpec(interpolatable=False)
+            }
+        )
+        data_providers.append(h5_source)
+    return tuple(data_providers)
+
 
 def train():
 
@@ -251,7 +275,23 @@ def train():
             raise argparse.ArgumentTypeError('Value %d is out of bounds for [%s, %s]' % (val, str(-math.inf if lower is None else lower), str(math.inf if upper is None else upper)))
         return val
 
-    parser = argparse.ArgumentParser()
+    # raw = 'volumes/raw',
+    # labels = 'volumes/labels/neuron_ids-downsampled',
+    # mask = 'volumes/mask/neuron_ids-downsampled')
+
+    def make_default_data_provider_string():
+        data_dir = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/realigned'
+        file_pattern = '*merged*fixed-offset-fixed-mask.h5'
+        return '{}/{}:{}={}:{}={}:{}={}'.format(
+            data_dir,
+            file_pattern,
+            'RAW', DEFAULT_PATHS['raw'],
+            'LABELS', DEFAULT_PATHS['labels'],
+            'MASK', DEFAULT_PATHS['mask'])
+
+    default_data_provider_string = make_default_data_provider_string()
+
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--training-directory', default='.', type=str)
     parser.add_argument('--snapshot-every', default=500, type=lambda arg: bounded_integer(arg, 1))
     parser.add_argument('--meta-graph-filename', default='unet', type=str, help='Filename with information about meta graph for network.')
@@ -283,6 +323,7 @@ def train():
     parser.add_argument('--affinity-neighborhood-y', nargs='+', type=int, default=(-1,))
     parser.add_argument('--affinity-neighborhood-z', nargs='+', type=int, default=(-1,))
     parser.add_argument('--grow-boundaries', metavar='STEPS', type=int, default=0, help='Grow boundaries for STEPS if larger than 0.')
+    parser.add_argument('--data-provider', metavar='GLOB_PATTERN[:raw=<dataset>[:labels=<dataset>:[mask=<dataset>]]]', default=(default_data_provider_string,), nargs='+', help='Add data provider.')
 
     args = parser.parse_args()
     log_levels=dict(DEBUG=logging.DEBUG, INFO=logging.INFO, WARN=logging.WARN, ERROR=logging.ERROR, CRITICAL=logging.CRITICAL)
@@ -304,9 +345,13 @@ def train():
 
     print('Using neighborhood', neighborhood)
 
-    nn_neighborhood = nn_affinity_channels = neighborhood[::len(neighborhood) // 3]
+    nn_neighborhood = neighborhood[::len(neighborhood) // 3]
 
     logging.basicConfig(level=log_levels[args.log_level])
+
+    _logger.info('Got data providers from user: %s', args.data_provider)
+    data_providers = make_data_providers(*args.data_provider)
+    _logger.info("Data providers: %s'", data_providers)
 
 
     if tf.train.latest_checkpoint('.'):
@@ -325,6 +370,7 @@ def train():
     if trained_until < args.mse_iterations:
 
         train_until(
+            data_providers=data_providers,
             affinity_neighborhood=neighborhood,
             meta_graph_filename=args.meta_graph_filename,
             stop=args.mse_iterations - trained_until,
@@ -386,6 +432,7 @@ def train():
         return loss, optimizer
 
     train_until(
+        data_providers=data_providers,
         affinity_neighborhood=neighborhood,
         meta_graph_filename=args.meta_graph_filename,
         stop=args.malis_iterations - (trained_until - args.mse_iterations),
