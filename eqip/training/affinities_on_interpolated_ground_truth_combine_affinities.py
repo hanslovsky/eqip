@@ -210,7 +210,8 @@ def train_until(
                 AFFINITIES_NN_KEY    : ArraySpec(voxel_size=output_voxel_size)
             }
         )
-    train_pipeline += Snapshot({
+    train_pipeline += Snapshot(
+            dataset_names={
                 RAW_KEY             : 'volumes/raw',
                 GT_LABELS_KEY       : 'volumes/labels/neuron_ids',
                 GT_AFFINITIES_KEY   : 'volumes/affinities/gt',
@@ -223,8 +224,7 @@ def train_until(
             output_filename='batch_{iteration}.hdf',
             output_dir='snapshots/',
             additional_request=snapshot_request,
-            store_value_range=True
-        )
+            attributes_callback=Snapshot.default_attributes_callback())
     train_pipeline += PrintProfilingStats(every=50)
 
     print("Starting training...")
