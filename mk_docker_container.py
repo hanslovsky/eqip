@@ -11,7 +11,7 @@ parser.add_argument('--repository', default='hanslovsky')
 parser.add_argument('--name', required=True)
 parser.add_argument('--version', default=None)
 parser.add_argument('--revision', default=None)
-parser.add_argument('--container', required=True)
+parser.add_argument('--python', choices=('3.5', '2.7'), required=True, type=str)
 parser.add_argument('--num-make-jobs', required=False, type=int, default=os.cpu_count())
 
 args = parser.parse_args()
@@ -39,16 +39,16 @@ version  = get_appropriate_version(version['__version__'], revision) if args.ver
 if args.name is None:
     tag = []
 elif version is None:
-    tag = ['-t', '%s/%s' % (args.repository, args.name)]
+    tag = ['-t', '%s/%s-py%s' % (args.repository, args.name, args.python)]
 else:
-    tag = ['-t', '%s/%s:%s' % (args.repository, args.name, version)]
+    tag = ['-t', '%s/%s:%s-py%s' % (args.repository, args.name, version, args.python)]
 
 
 
 docker_cmd = [] + \
   ['docker', 'build', '--build-arg', 'NUM_MAKE_CORES=%s' % args.num_make_jobs, '--build-arg', 'EQIP_REVISION=%s' % revision] + \
   tag + \
-  [os.path.join(here, 'docker-container', args.container)]
+  [os.path.join(here, 'docker-container', 'python%s' % args.python)]
 
 print(docker_cmd)
 
