@@ -62,6 +62,7 @@ ENV PYTHONPATH ${GUNPOWDER_ROOT}:$PYTHONPATH
 
 ARG NUM_MAKE_CORES=10
 
+
 ENV BLOSC_ROOT=${PREFIX}/src/c-blosc
 ENV BLOSC_REPOSITORY=https://github.com/Blosc/c-blosc
 ENV BLOSC_REVISION=1.15.1
@@ -74,12 +75,12 @@ RUN cmake -DWITH_BLOSC=OFF -DWITH_ZLIB=ON -DWITH_BZIP2=ON -DWITH_XZ=ON -DCMAKE_C
     make install
 ENV PYTHONPATH ${BLOSC_ROOT}:$PYTHONPATH
 
+
 ENV BOOST_VERSION=1.69.0
 ENV BOOST_VERSION_UNDERSCORE=1_69_0
 ENV BOOST_ROOT=${PREFIX}/src/boost_${BOOST_VERSION_UNDERSCORE}
 ENV BOOST_TAR=$HOME/boost_${BOOST_VERSION_UNDERSCORE}.tar.gz
 ENV BOOST_SRC=https://dl.bintray.com/boostorg/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_UNDERSCORE}.tar.gz
-
 
 WORKDIR ${BOOST_ROOT}
 RUN wget ${BOOST_SRC} -O ${BOOST_TAR}
@@ -88,7 +89,9 @@ RUN ./bootstrap.sh
 RUN ./b2 --with-filesystem --with-system install
 # RUN ./bjam install
 
+
 RUN ${PIP} install pytest
+
 
 ENV PYBIND11_ROOT=${PREFIX}/src/pybind11
 ENV PYBIND11_REPOSITORY=https://github.com/pybind/pybind11
@@ -105,12 +108,14 @@ ENV XTL_ROOT=${PREFIX}/src/xtl
 ENV XTL_REPOSITORY=https://github.com/QuantStack/xtl
 ENV XTL_REVISION=0.5.2
 
+
 WORKDIR ${XTL_ROOT}
 RUN git clone ${XTL_REPOSITORY} . && \
     git checkout ${XTL_REVISION}
 RUN cmake .
 RUN make -j $NUM_MAKE_CORES
 RUN make install
+
 
 ENV XTENSOR_ROOT=${PREFIX}/src/xtensor
 ENV XTENSOR_REPOSITORY=https://github.com/QuantStack/xtensor
@@ -123,6 +128,7 @@ RUN cmake .
 RUN make -j $NUM_MAKE_CORES
 RUN make install
 
+
 ENV XTENSOR_PYTHON_ROOT=${PREFIX}/src/xtensor-python
 ENV XTENSOR_PYTHON_REPOSITORY=https://github.com/QuantStack/xtensor-python
 ENV XTENSOR_PYTHON_REVISION=0.22.0
@@ -133,6 +139,7 @@ RUN git clone ${XTENSOR_PYTHON_REPOSITORY} . && \
 RUN cmake -DPYTHON_EXECUTABLE=$(which ${PYTHON}) .
 RUN make -j $NUM_MAKE_CORES
 RUN make install
+
 
 ENV CMAKE_ROOT=${PREFIX}/src/cmake
 ENV CMAKE_REPOSITORY=https://github.com/Kitware/CMake
@@ -145,6 +152,7 @@ RUN cmake .
 RUN make -j $NUM_MAKE_CORES
 RUN make install
 
+
 ENV NLOHMANN_JSON_ROOT=${PREFIX}/src/json
 ENV NLOHMANN_JSON_REPOSITORY=https://github.com/nlohmann/json
 ENV NLOHMANN_JSON_REVISION=v3.5.0
@@ -156,7 +164,6 @@ RUN cmake .
 RUN make -j $NUM_MAKE_CORES
 RUN make install
 
-RUN ls /usr/local/lib/libboost*
 
 ENV Z5_ROOT=${PREFIX}/src/z5
 ENV Z5_REPOSITORY=https://github.com/constantinpape/z5
@@ -176,6 +183,7 @@ RUN cmake \
 RUN make -j $NUM_MAKE_CORES
 RUN make install
 
+
 ARG DAISY_REVISION=74b7354
 ENV DAISY_ROOT=${PREFIX}/src/daisy
 ENV DAISY_REPOSITORY=https://github.com/funkelab/daisy.git
@@ -184,6 +192,7 @@ WORKDIR ${DAISY_ROOT}
 RUN git clone ${DAISY_REPOSITORY} . && \
     git checkout ${DAISY_REVISION} && \
     ${PIP} install .
+
 
 ARG EQIP_REVISION=master
 ENV EQIP_ROOT=${PREFIX}/src/eqip
