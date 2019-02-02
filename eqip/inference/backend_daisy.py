@@ -243,8 +243,8 @@ def predict_affinities_daisy():
     output_dataset = args.output_dataset
     input_source = Z5Source(input_container, datasets={_RAW: input_dataset}, array_specs={_RAW: ArraySpec(voxel_size=input_voxel_size)})
     output_write = Z5Write(
-        output_filename=output_container.name,
-        output_dir=output_dir,
+        output_filename=str(output_container.name),
+        output_dir=str(output_dir),
         dataset_names={_AFFS: output_dataset},
         compression_type=args.output_compression)
     iteration = args.iteration
@@ -275,9 +275,9 @@ def predict_affinities_daisy():
     _logger.info('output network size world:  %s', network_output_shape_world)
 
 
-    if not os.path.isdir(output_container):
-        os.makedirs(output_container)
-    with z5py.File(output_container, use_zarr_format=False) as f:
+    if not os.path.isdir(str(output_container)):
+        os.makedirs(str(output_container))
+    with z5py.File(str(output_container), use_zarr_format=False) as f:
         ds = f.require_dataset(
             name=output_dataset,
             shape=(num_channels,) + output_dataset_roi.get_shape() if num_channels > 0 else output_dataset_roi.get_shape(),
