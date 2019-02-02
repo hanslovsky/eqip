@@ -12,6 +12,7 @@ parser.add_argument('--name', required=True)
 parser.add_argument('--version', default=None)
 parser.add_argument('--revision', default=None)
 parser.add_argument('--container', required=True)
+parser.add_argument('--num-make-jobs', required=False, type=int, default=os.cpu_count())
 
 args = parser.parse_args()
 
@@ -45,7 +46,7 @@ else:
 
 
 docker_cmd = [] + \
-  ['docker', 'build', '--build-arg', 'EQIP_REVISION=%s' % revision] + \
+  ['docker', 'build', '--build-arg', 'NUM_MAKE_CORES=%s' % args.num_make_jobs, '--build-arg', 'EQIP_REVISION=%s' % revision] + \
   tag + \
   [os.path.join(here, 'docker-container', args.container)]
 
