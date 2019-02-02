@@ -11,7 +11,7 @@ parser.add_argument('--repository', default='hanslovsky')
 parser.add_argument('--name', required=True)
 parser.add_argument('--version', default=None)
 parser.add_argument('--revision', default=None)
-parser.add_argument('--python', choices=('3.5', '2.7'), required=True, type=str)
+parser.add_argument('--python', choices=('3.5'), required=True, type=str)
 parser.add_argument('--num-make-jobs', required=False, type=int, default=os.cpu_count())
 
 args = parser.parse_args()
