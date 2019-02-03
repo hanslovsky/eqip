@@ -191,7 +191,7 @@ def make_process_function(
         actor_id = scheduler.context.actor_id
         num_workers = scheduler.context.num_workers
         gpu = actor_id_to_gpu_mapping(actor_id)
-        # os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
         _logger.info("Worker %d uses gpu %d", actor_id, gpu)
 
         _logger.info("Environment:")
@@ -211,7 +211,7 @@ def make_process_function(
             # print("Worker %d  sees gpus %s" % (actor_id, available_gpus))
 
         import tensorflow as tf
-        with tf.device('/gpu:%d' % actor_id):
+        with tf.device('/gpu:%d' % 0):
             from gunpowder import ArrayKey, ArraySpec, build, BatchRequest
             from gunpowder import Roi as gRoi
             from gunpowder import Coordinate as gCoordinate
@@ -310,7 +310,7 @@ def predict_affinities_daisy():
     with z5py.File(str(output_container), use_zarr_format=False) as f:
         ds = f.require_dataset(
             name=output_dataset,
-            shape=(num_channels,) + output_dataset_roi.get_shape() if num_channels > 0 else output_dataset_roi.get_shape(),
+            shape=(num_channels,) + tuple(output_dataset_roi.get_shape()) if num_channels > 0 else tuple(output_dataset_roi.get_shape()),
             dtype=np.float32,
             chunks = (1,) + tuple(network_output_shape) if num_channels > 0 else tuple(network_output_shape),
             compression='raw')
