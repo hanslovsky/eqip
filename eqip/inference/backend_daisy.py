@@ -212,7 +212,9 @@ def make_process_function(
 
         import tensorflow as tf
         with tf.device('/gpu:%d' % actor_id):
-            from gunpowder import ArrayKey, ArraySpec, build, BatchRequest, Coordinate, Roi
+            from gunpowder import ArrayKey, ArraySpec, build, BatchRequest
+            from gunpowder import Roi as gRoi
+            from gunpowder import Coordinate as gCoordinate
             _RAW = ArrayKey('RAW')
             _AFFS = ArrayKey('AFFS')
 
@@ -225,8 +227,12 @@ def make_process_function(
                         break
 
                     request = BatchRequest()
-                    request[_RAW] = ArraySpec(roi=block.read_roi, voxel_size=input_voxel_size)
-                    request[_AFFS] = ArraySpec(roi=block.write_roi, voxel_size=output_voxel_size)
+                    request[_RAW] = ArraySpec(
+                        roi=gRoi(offset=block.read_roi.get_begin(), shape=block.read_roi.get_shape()),
+                        voxel_size=gCoordinate(input_voxel_size))
+                    request[_AFFS] = ArraySpec(
+                        roi=gRoi(offset=block.write_roi.get_begin(), shape=block.write_roi.get_shape()),
+                        voxel_size=gCoordinate(output_voxel_size))
                     _logger.info('Requesting %s', request)
                     pipeline.request_batch(request)
                     scheduler.release_block(block, 0)
