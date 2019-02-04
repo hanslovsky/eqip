@@ -242,6 +242,13 @@ def make_process_function(
     return process_function
 
 def predict_affinities_daisy():
+    import timeit
+    start = timeit.default_timer()
+    _predict_affinities_daisy()
+    stop = timeit.default_timer()
+    _logger.info("Wall clock time for inference: %ds", stop - start)
+
+def _predict_affinities_daisy():
 
 
 
