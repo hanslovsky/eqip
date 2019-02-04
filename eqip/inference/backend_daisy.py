@@ -310,9 +310,9 @@ def predict_affinities_daisy():
     with z5py.File(str(output_container), use_zarr_format=False) as f:
         ds = f.require_dataset(
             name=output_dataset,
-            shape=(num_channels,) + tuple(output_dataset_roi.get_shape()) if num_channels > 0 else tuple(output_dataset_roi.get_shape()),
+            shape=(num_channels,) + tuple(int(s) for s in output_dataset_roi.get_shape()) if num_channels > 0 else tuple(int(s) for s in output_dataset_roi.get_shape()),
             dtype=np.float32,
-            chunks = (1,) + tuple(network_output_shape) if num_channels > 0 else tuple(network_output_shape),
+            chunks = (1,) + tuple(int(n) for n in network_output_shape) if num_channels > 0 else tuple(int(n) for n in network_output_shape),
             compression='raw')
         ds.attrs['resolution'] = tuple(args.output_voxel_size[::-1])
         ds.attrs['offset'] = tuple(output_dataset_roi_world.get_begin()[::-1])
