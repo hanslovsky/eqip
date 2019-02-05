@@ -22,6 +22,8 @@ import math
 import json
 import logging
 
+from .. import io_keys
+
 RAW_KEY              = ArrayKey('RAW')
 ALPHA_MASK_KEY       = ArrayKey('ALPHA_MASK')
 GT_LABELS_KEY        = ArrayKey('GT_LABELS')
@@ -221,9 +223,7 @@ def train_until(
             every=snapshot_every,
             output_filename='batch_{iteration}.hdf',
             output_dir='snapshots/',
-            additional_request=snapshot_request,
-            store_value_range=True
-        )
+            additional_request=snapshot_request)
     train_pipeline += PrintProfilingStats(every=50)
 
     print("Starting training...")
@@ -254,15 +254,6 @@ def train():
     parser.add_argument('--output-shape', type=int, nargs=3, default=(65, 70, 70))
     parser.add_argument('--log-level', choices=('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'), default='INFO', type=str)
     parser.add_argument('--net-io-names', type=str, default='net_io_names.json', help='Path to file holding network input/output name specs')
-    parser.add_argument('--io-key-mse-prefix', type=str, default='mse')
-    parser.add_argument('--io-key-raw', type=str, default='raw')
-    parser.add_argument('--io-key-affinities', type=str, default='affinities')
-    parser.add_argument('--io-key-gt-affinities', type=str, default='gt_affinities')
-    parser.add_argument('--io-key-affinities-mask', type=str, default='affinities_mask')
-    parser.add_argument('--io-key-optimizer', type=str, default='optimizer')
-    parser.add_argument('--io-key-loss', type=str, default='loss')
-    parser.add_argument('--io-key-summary', type=str, default='summary')
-    parser.add_argument('--io-key-gt-labels', type=str, default='gt_labels')
     parser.add_argument('--save-checkpoint-every', type=lambda arg: bounded_integer(arg, 1), default=2000, metavar='N_BETWEEN_CHECKPOINTS', help='Make a checkpoint of the model every Nth iteration.')
     parser.add_argument('--pre-cache-num-workers', type=lambda arg: bounded_integer(arg, 1), default=50, metavar='PRECACHE_NUM_WORKERS', help='Number of workers used to populate pre-cache')
     parser.add_argument('--pre-cache-size', type=lambda arg: bounded_integer(arg, 1), default=100, metavar='PRECACHE_SIZE', help='Size of pre-cache')
@@ -303,9 +294,9 @@ def train():
         print('Starting fresh training')
 
     inputs = {
-        net_io_names[args.io_key_raw]           : RAW_KEY,
-        net_io_names[args.io_key_gt_affinities] : GT_AFFINITIES_KEY,
-        net_io_names[args.io_key_gt_labels]     : GT_LABELS_KEY
+        net_io_names[io_keys.RAW]           : RAW_KEY,
+        net_io_names[io_keys.GT_AFFINITIES] : GT_AFFINITIES_KEY,
+        net_io_names[io_keys.GT_LABELS]     : GT_LABELS_KEY
     }
 
     if trained_until < args.mse_iterations:
@@ -316,11 +307,11 @@ def train():
             stop=args.mse_iterations - trained_until,
             input_shape=args.input_shape,
             output_shape=args.output_shape,
-            loss=net_io_names['%s_%s' % (args.io_key_mse_prefix, args.io_key_loss)],
-            optimizer=net_io_names['%s_%s' % (args.io_key_mse_prefix, args.io_key_optimizer)],
-            summary=net_io_names[args.io_key_summary],
-            tensor_affinities=net_io_names[args.io_key_affinities],
-            tensor_affinities_mask=net_io_names[args.io_key_affinities_mask],
+            loss=net_io_names['%s_%s' % (io_keys.MSE_PREFIX, io_keys.LOSS)],
+            optimizer=net_io_names['%s_%s' % (io_keys.MSE_PREFIX, io_keys.OPTIMIZIER)],
+            summary=net_io_names[io_keys.SUMMARY],
+            tensor_affinities=net_io_names[io_keys.AFFINITIES],
+            tensor_affinities_mask=net_io_names[io_keys.AFFINITIES_MASK],
             save_checkpoint_every=args.save_checkpoint_every,
             pre_cache_size=args.pre_cache_size,
             pre_cache_num_workers=args.pre_cache_num_workers,
@@ -335,10 +326,10 @@ def train():
         raise Exception("Inconsistency!")
 
     def malis_loss(graph):
-        affinities = graph.get_tensor_by_name(net_io_names[args.io_key_affinities])
-        gt_affinities = graph.get_tensor_by_name(net_io_names[args.io_key_gt_affinities])
-        gt_labels = graph.get_tensor_by_name(net_io_names[args.io_key_gt_labels])
-        affinities_mask = graph.get_tensor_by_name(net_io_names[args.io_key_affinities_mask])
+        affinities = graph.get_tensor_by_name(net_io_names[io_keys.AFFINITIES])
+        gt_affinities = graph.get_tensor_by_name(net_io_names[io_keys.GT_AFFINITIES])
+        gt_labels = graph.get_tensor_by_name(net_io_names[io_keys.GT_LABELS])
+        affinities_mask = graph.get_tensor_by_name(net_io_names[io_keys.AFFINITIES_MASK])
         loss = malis.malis_loss_op(
             affs = affinities,
             gt_affs = gt_affinities,
@@ -366,8 +357,8 @@ def train():
         loss=None,
         optimizer=malis_loss,
         summary='summary_malis_loss:0',
-        tensor_affinities=net_io_names[args.io_key_affinities],
-        tensor_affinities_mask=net_io_names[args.io_key_affinities_mask],
+        tensor_affinities=net_io_names[io_keys.AFFINITIES],
+        tensor_affinities_mask=net_io_names[io_keys.AFFINITIES_MASK],
         save_checkpoint_every=args.save_checkpoint_every,
         pre_cache_size=args.pre_cache_size,
         pre_cache_num_workers=args.pre_cache_num_workers,
