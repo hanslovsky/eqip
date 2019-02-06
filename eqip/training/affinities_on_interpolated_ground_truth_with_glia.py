@@ -40,7 +40,7 @@ AFFINITIES_SCALE_KEY = gunpowder_utils.AFFINITIES_SCALE_KEY
 GLIA_MASK_KEY        = gunpowder_utils.GLIA_MASK_KEY
 GLIA_KEY             = gunpowder_utils.GLIA_KEY
 GLIA_SCALE_KEY       = gunpowder_utils.GLIA_SCALE_KEY
-GT_GLIA_KEY          = GT_MASK_KEY
+GT_GLIA_KEY          = gunpowder_utils.GT_GLIA_KEY
 
 def train_until(
         data_providers,
