@@ -109,3 +109,4 @@ unet-inference.meta
 unet.meta
 snapshots
 log
+test-affinities-with-glia
