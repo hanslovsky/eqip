@@ -5,7 +5,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
 
-from gpn import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment
+from gpn import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment, NumpyRequire
 from gunpowder import ArrayKey, Hdf5Source, Coordinate, BatchRequest, Normalize, Pad, RandomLocation, Reject, \
     ArraySpec, IntensityAugment, RandomProvider, GrowBoundary, IntensityScaleShift, \
     PrintProfilingStats, build, PreCache
@@ -20,6 +20,7 @@ from gunpowder.tensorflow import Train
 import tensorflow as tf
 import os
 import math
+import numpy as np
 import json
 import sys
 
@@ -102,9 +103,10 @@ def train_until(
     request.add(GT_GLIA_KEY,         output_size, voxel_size=output_voxel_size)
     if balance_labels:
         request.add(AFFINITIES_SCALE_KEY, output_size, voxel_size=output_voxel_size)
-        # request.add(GLIA_SCALE_KEY, output_size, voxel_size=output_voxel_size)
+    # always balance glia labels!
+    request.add(GLIA_SCALE_KEY, output_size, voxel_size=output_voxel_size)
     network_inputs[tensor_affinities_mask] = AFFINITIES_SCALE_KEY if balance_labels else AFFINITIES_MASK_KEY
-    network_inputs[tensor_glia_mask]       = GLIA_MASK_KEY#GLIA_SCALE_KEY if balance_labels else GLIA_MASK_KEY
+    network_inputs[tensor_glia_mask]       = GLIA_SCALE_KEY#GLIA_SCALE_KEY if balance_labels else GLIA_MASK_KEY
 
     # create a tuple of data sources, one for each HDF file
     data_sources = tuple(
@@ -118,7 +120,8 @@ def train_until(
         Pad(GT_MASK_KEY, None) +
         RandomLocation() + # chose a random location inside the provided arrays
         Reject(GT_MASK_KEY) + # reject batches wich do contain less than 50% labelled data
-        Reject(LABELS_KEY, min_masked=0.0, reject_probability=0.95)
+        Reject(LABELS_KEY, min_masked=0.0, reject_probability=0.95) +
+        NumpyRequire(GT_GLIA_KEY, dtype=np.int64) # this is necessary because gunpowder 1.3 only understands int64, not uint64
 
         for provider in data_providers)
 
@@ -203,9 +206,9 @@ def train_until(
 
     if balance_labels:
         train_pipeline += BalanceLabels(labels=GT_AFFINITIES_KEY, scales=AFFINITIES_SCALE_KEY, mask=AFFINITIES_MASK_KEY)
-        # train_pipeline += BalanceLabels(labels=GT_GLIA_KEY,       scales=GLIA_SCALE_KEY,       mask=GLIA_MASK_KEY)
         snapshot_datasets[AFFINITIES_SCALE_KEY] = 'masks/affinitiy-scale'
-        # snapshot_datasets[GLIA_SCALE_KEY]       = 'masks/glia-scale'
+    train_pipeline += BalanceLabels(labels=GT_GLIA_KEY, scales=GLIA_SCALE_KEY, mask=GLIA_MASK_KEY)
+    snapshot_datasets[GLIA_SCALE_KEY] = 'masks/glia-scale'
 
 
     train_pipeline += PreCache(cache_size=pre_cache_size, num_workers=pre_cache_num_workers)
@@ -281,8 +284,8 @@ def train(argv=sys.argv[1:]):
     parser.add_argument('--log-level', choices=('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'), default='INFO', type=str)
     parser.add_argument('--net-io-names', type=str, default='net_io_names.json', help='Path to file holding network input/output name specs')
     parser.add_argument('--save-checkpoint-every', type=lambda arg: bounded_integer(arg, 1), default=2000, metavar='N_BETWEEN_CHECKPOINTS', help='Make a checkpoint of the model every Nth iteration.')
-    parser.add_argument('--pre-cache-num-workers', type=lambda arg: bounded_integer(arg, 50), default=1, metavar='PRECACHE_NUM_WORKERS', help='Number of workers used to populate pre-cache')
-    parser.add_argument('--pre-cache-size', type=lambda arg: bounded_integer(arg, 100), default=1, metavar='PRECACHE_SIZE', help='Size of pre-cache')
+    parser.add_argument('--pre-cache-num-workers', type=lambda arg: bounded_integer(arg, 1), default=1, metavar='PRECACHE_NUM_WORKERS', help='Number of workers used to populate pre-cache')
+    parser.add_argument('--pre-cache-size', type=lambda arg: bounded_integer(arg, 1), default=1, metavar='PRECACHE_SIZE', help='Size of pre-cache')
     parser.add_argument('--ignore-labels-for-slip', action='store_true')
     parser.add_argument('--affinity-neighborhood-x', nargs='+', type=int, default=(-1,))
     parser.add_argument('--affinity-neighborhood-y', nargs='+', type=int, default=(-1,))
