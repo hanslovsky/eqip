@@ -3,6 +3,7 @@ import glob
 
 import logging
 logging.basicConfig(level=logging.INFO)
+_logger = logging.getLogger(__name__)
 
 from gpn import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment
 from gunpowder import ArrayKey, Hdf5Source, Coordinate, BatchRequest, Normalize, Pad, RandomLocation, Reject, \
@@ -20,8 +21,8 @@ import tensorflow as tf
 import os
 import math
 import json
-import logging
 
+from .. import gunpowder_utils
 from .. import io_keys
 
 RAW_KEY              = ArrayKey('RAW')
@@ -36,6 +37,7 @@ AFFINITIES_MASK_KEY  = ArrayKey('AFFINITIES_MASK')
 AFFINITIES_SCALE_KEY = ArrayKey('AFFINITIES_SCALE')
 
 def train_until(
+        data_providers,
         affinity_neighborhood,
         meta_graph_filename,
         stop,
@@ -57,9 +59,6 @@ def train_until(
         grow_boundaries):
 
     ignore_keys_for_slip = (GT_LABELS_KEY, GT_MASK_KEY) if ignore_labels_for_slip else ()
-
-    data_providers = []
-    data_dir   = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/realigned'
     defect_dir = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/defects'
     if tf.train.latest_checkpoint('.'):
         trained_until = int(tf.train.latest_checkpoint('.').split('_')[-1])
@@ -67,20 +66,6 @@ def train_until(
     else:
         trained_until = 0
         print('Starting fresh training')
-    file_pattern = '*merged*fixed-offset-fixed-mask.h5'
-    for data in glob.glob(os.path.join(data_dir, file_pattern)):
-        h5_source = Hdf5Source(
-            data,
-            datasets={
-                RAW_KEY       : 'volumes/raw',
-                GT_LABELS_KEY : 'volumes/labels/neuron_ids-downsampled',
-                GT_MASK_KEY   : 'volumes/masks/neuron_ids-downsampled',
-            },
-            array_specs={
-                GT_MASK_KEY : ArraySpec(interpolatable=False)
-            }
-        )
-        data_providers.append(h5_source)
 
     input_voxel_size = Coordinate((120, 12, 12)) * 3
     output_voxel_size = Coordinate((40, 36, 36)) * 3
@@ -244,6 +229,18 @@ def train():
             raise argparse.ArgumentTypeError('Value %d is out of bounds for [%s, %s]' % (val, str(-math.inf if lower is None else lower), str(math.inf if upper is None else upper)))
         return val
 
+    def make_default_data_provider_string():
+        data_dir = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/realigned'
+        file_pattern = '*merged*fixed-offset-fixed-mask.h5'
+        return '{}/{}:{}={}:{}={}:{}={}'.format(
+            data_dir,
+            file_pattern,
+            'RAW', gunpowder_utils.DEFAULT_PATHS['raw'],
+            'LABELS', gunpowder_utils.DEFAULT_PATHS['labels'],
+            'MASK', gunpowder_utils.DEFAULT_PATHS['mask'])
+
+    default_data_provider_string = make_default_data_provider_string()
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--training-directory', default='.', type=str)
     parser.add_argument('--snapshot-every', default=500, type=lambda arg: bounded_integer(arg, 1))
@@ -262,6 +259,7 @@ def train():
     parser.add_argument('--affinity-neighborhood-y', nargs='+', type=int, default=(-1,))
     parser.add_argument('--affinity-neighborhood-z', nargs='+', type=int, default=(-1,))
     parser.add_argument('--grow-boundaries', metavar='STEPS', type=int, default=0, help='Grow boundaries for STEPS if larger than 0.')
+    parser.add_argument('--data-provider', metavar='GLOB_PATTERN[:raw=<dataset>[:labels=<dataset>:[mask=<dataset>]]]', default=(default_data_provider_string,), nargs='+', help='Add data provider.')
 
     args = parser.parse_args()
     log_levels=dict(DEBUG=logging.DEBUG, INFO=logging.INFO, WARN=logging.WARN, ERROR=logging.ERROR, CRITICAL=logging.CRITICAL)
@@ -285,6 +283,10 @@ def train():
 
     logging.basicConfig(level=log_levels[args.log_level])
 
+    _logger.info('Got data providers from user: %s', args.data_provider)
+    data_providers = gunpowder_utils.make_data_providers(*args.data_provider)
+    _logger.info("Data providers: %s'", data_providers)
+
 
     if tf.train.latest_checkpoint('.'):
         trained_until = int(tf.train.latest_checkpoint('.').split('_')[-1])
@@ -302,6 +304,7 @@ def train():
     if trained_until < args.mse_iterations:
 
         train_until(
+            data_providers=data_providers,
             affinity_neighborhood=neighborhood,
             meta_graph_filename=args.meta_graph_filename,
             stop=args.mse_iterations - trained_until,
@@ -349,6 +352,7 @@ def train():
         return loss, optimizer
 
     train_until(
+        data_providers=data_providers,
         affinity_neighborhood=neighborhood,
         meta_graph_filename=args.meta_graph_filename,
         stop=args.malis_iterations - (trained_until - args.mse_iterations),
