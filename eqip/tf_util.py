@@ -30,6 +30,7 @@ def loss_affinities_with_glia(
         net_io_names,
         optimizer_or_name,
         summary_name,
+        glia_loss_type='mse',
         tf_loss = tf.losses.mean_squared_error):
 
     def loss_func(graph):
@@ -38,7 +39,7 @@ def loss_affinities_with_glia(
         affinities_mask = graph.get_tensor_by_name(net_io_names[io_keys.AFFINITIES_MASK])
         loss_affinities = tf_loss(gt_affinities, affinities, affinities_mask)
 
-        glia_loss = graph.get_tensor_by_name(net_io_names[io_keys.GLIA_LOSS])
+        glia_loss = graph.get_tensor_by_name(net_io_names[io_keys.glia_loss_name(glia_loss_type)])
 
         loss = glia_loss * loss_affinities
         opt = default_adam_optimizer(optimizer_or_name) if isinstance(optimizer_or_name, str) else optimizer_or_name

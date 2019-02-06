@@ -27,16 +27,20 @@ from .. import gunpowder_utils
 from .. import io_keys
 from .. import tf_util
 
-RAW_KEY              = ArrayKey('RAW')
-ALPHA_MASK_KEY       = ArrayKey('ALPHA_MASK')
-GT_LABELS_KEY        = ArrayKey('GT_LABELS')
-GT_MASK_KEY          = ArrayKey('GT_MASK')
-TRAINING_MASK_KEY    = ArrayKey('TRAINING_MASK')
-LOSS_GRADIENT_KEY    = ArrayKey('LOSS_GRADIENT')
-AFFINITIES_KEY       = ArrayKey('AFFINITIES')
-GT_AFFINITIES_KEY    = ArrayKey('GT_AFFINITIES')
-AFFINITIES_MASK_KEY  = ArrayKey('AFFINITIES_MASK')
-AFFINITIES_SCALE_KEY = ArrayKey('AFFINITIES_SCALE')
+RAW_KEY              = gunpowder_utils.RAW_KEY
+ALPHA_MASK_KEY       = gunpowder_utils.ALPHA_MASK_KEY
+LABELS_KEY           = gunpowder_utils.NEURON_IDS_NO_GLIA_KEY
+GT_MASK_KEY          = gunpowder_utils.MASK_KEY
+TRAINING_MASK_KEY    = gunpowder_utils.TRAINING_MASK_KEY
+LOSS_GRADIENT_KEY    = gunpowder_utils.LOSS_GRADIENT_KEY
+AFFINITIES_KEY       = gunpowder_utils.AFFINITIES_KEY
+GT_AFFINITIES_KEY    = gunpowder_utils.GT_AFFINITIES_KEY
+AFFINITIES_MASK_KEY  = gunpowder_utils.AFFINITIES_MASK_KEY
+AFFINITIES_SCALE_KEY = gunpowder_utils.AFFINITIES_SCALE_KEY
+GLIA_MASK_KEY        = gunpowder_utils.GLIA_MASK_KEY
+GLIA_KEY             = gunpowder_utils.GLIA_KEY
+GLIA_SCALE_KEY       = gunpowder_utils.GLIA_SCALE_KEY
+GT_GLIA_KEY          = GT_MASK_KEY
 
 def train_until(
         data_providers,
@@ -49,6 +53,8 @@ def train_until(
         optimizer,
         tensor_affinities,
         tensor_affinities_mask,
+        tensor_glia,
+        tensor_glia_mask,
         summary,
         save_checkpoint_every,
         pre_cache_size,
@@ -58,9 +64,10 @@ def train_until(
         renumber_connected_components,
         network_inputs,
         ignore_labels_for_slip,
-        grow_boundaries):
+        grow_boundaries,
+        snapshot_dir):
 
-    ignore_keys_for_slip = (GT_LABELS_KEY, GT_MASK_KEY) if ignore_labels_for_slip else ()
+    ignore_keys_for_slip = (LABELS_KEY, GT_MASK_KEY) if ignore_labels_for_slip else ()
 
     defect_dir = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/defects'
     if tf.train.latest_checkpoint('.'):
@@ -82,16 +89,22 @@ def train_until(
 
     # TODO why is GT_AFFINITIES three-dimensional? compare to
     # TODO https://github.com/funkey/gunpowder/blob/master/examples/cremi/train.py#L35
+    # TODO Use glia scale somehow, probably not possible with tensorflow 1.3 because it does not know uint64...
     # specifiy which Arrays should be requested for each batch
     request = BatchRequest()
     request.add(RAW_KEY,             input_size,  voxel_size=input_voxel_size)
-    request.add(GT_LABELS_KEY,       output_size, voxel_size=output_voxel_size)
+    request.add(LABELS_KEY,          output_size, voxel_size=output_voxel_size)
     request.add(GT_AFFINITIES_KEY,   output_size, voxel_size=output_voxel_size)
     request.add(AFFINITIES_MASK_KEY, output_size, voxel_size=output_voxel_size)
     request.add(GT_MASK_KEY,         output_size, voxel_size=output_voxel_size)
+    request.add(GLIA_MASK_KEY,       output_size, voxel_size=output_voxel_size)
+    request.add(GLIA_KEY,            output_size, voxel_size=output_voxel_size)
+    request.add(GT_GLIA_KEY,         output_size, voxel_size=output_voxel_size)
     if balance_labels:
         request.add(AFFINITIES_SCALE_KEY, output_size, voxel_size=output_voxel_size)
+        # request.add(GLIA_SCALE_KEY, output_size, voxel_size=output_voxel_size)
     network_inputs[tensor_affinities_mask] = AFFINITIES_SCALE_KEY if balance_labels else AFFINITIES_MASK_KEY
+    network_inputs[tensor_glia_mask]       = GLIA_MASK_KEY#GLIA_SCALE_KEY if balance_labels else GLIA_MASK_KEY
 
     # create a tuple of data sources, one for each HDF file
     data_sources = tuple(
@@ -105,7 +118,7 @@ def train_until(
         Pad(GT_MASK_KEY, None) +
         RandomLocation() + # chose a random location inside the provided arrays
         Reject(GT_MASK_KEY) + # reject batches wich do contain less than 50% labelled data
-        Reject(GT_LABELS_KEY, min_masked=0.0, reject_probability=0.95)
+        Reject(LABELS_KEY, min_masked=0.0, reject_probability=0.95)
 
         for provider in data_providers)
 
@@ -165,21 +178,35 @@ def train_until(
     train_pipeline += IntensityScaleShift(RAW_KEY, 2, -1)
     train_pipeline += ZeroOutConstSections(RAW_KEY)
     if grow_boundaries > 0:
-        train_pipeline += GrowBoundary(GT_LABELS_KEY, GT_MASK_KEY, steps=grow_boundaries, only_xy=True)
+        train_pipeline += GrowBoundary(LABELS_KEY, GT_MASK_KEY, steps=grow_boundaries, only_xy=True)
 
     if renumber_connected_components:
-        train_pipeline += RenumberConnectedComponents(labels=GT_LABELS_KEY)
+        train_pipeline += RenumberConnectedComponents(labels=LABELS_KEY)
 
     train_pipeline += AddAffinities(
             affinity_neighborhood=affinity_neighborhood,
-            labels=GT_LABELS_KEY,
+            labels=LABELS_KEY,
             labels_mask=GT_MASK_KEY,
             affinities=GT_AFFINITIES_KEY,
-            affinities_mask=AFFINITIES_MASK_KEY
-        )
+            affinities_mask=AFFINITIES_MASK_KEY)
+
+    snapshot_datasets = {
+        RAW_KEY: 'volumes/raw',
+        LABELS_KEY: 'volumes/labels/neuron_ids',
+        GT_AFFINITIES_KEY: 'volumes/affinities/gt',
+        GT_GLIA_KEY: 'volumes/labels/glia_gt',
+        AFFINITIES_KEY: 'volumes/affinities/prediction',
+        LOSS_GRADIENT_KEY: 'volumes/loss_gradient',
+        AFFINITIES_MASK_KEY: 'masks/affinities',
+        GLIA_KEY: 'volumes/labels/glia_pred',
+        GLIA_MASK_KEY: 'masks/glia'}
 
     if balance_labels:
         train_pipeline += BalanceLabels(labels=GT_AFFINITIES_KEY, scales=AFFINITIES_SCALE_KEY, mask=AFFINITIES_MASK_KEY)
+        # train_pipeline += BalanceLabels(labels=GT_GLIA_KEY,       scales=GLIA_SCALE_KEY,       mask=GLIA_MASK_KEY)
+        snapshot_datasets[AFFINITIES_SCALE_KEY] = 'masks/affinitiy-scale'
+        # snapshot_datasets[GLIA_SCALE_KEY]       = 'masks/glia-scale'
+
 
     train_pipeline += PreCache(cache_size=pre_cache_size, num_workers=pre_cache_num_workers)
     train_pipeline += Train(
@@ -190,28 +217,26 @@ def train_until(
             loss=loss,
             inputs=network_inputs,
             log_dir='log',
-            outputs={tensor_affinities: AFFINITIES_KEY},
+            outputs={tensor_affinities: AFFINITIES_KEY, tensor_glia: GLIA_KEY},
             gradients={tensor_affinities: LOSS_GRADIENT_KEY},
             array_specs={
                 AFFINITIES_KEY       : ArraySpec(voxel_size=output_voxel_size),
                 LOSS_GRADIENT_KEY    : ArraySpec(voxel_size=output_voxel_size),
                 AFFINITIES_MASK_KEY  : ArraySpec(voxel_size=output_voxel_size),
                 GT_MASK_KEY          : ArraySpec(voxel_size=output_voxel_size),
-                AFFINITIES_SCALE_KEY : ArraySpec(voxel_size=output_voxel_size)
+                AFFINITIES_SCALE_KEY : ArraySpec(voxel_size=output_voxel_size),
+                GLIA_MASK_KEY        : ArraySpec(voxel_size=output_voxel_size),
+                GLIA_SCALE_KEY       : ArraySpec(voxel_size=output_voxel_size),
+                GLIA_KEY             : ArraySpec(voxel_size=output_voxel_size)
             }
         )
-    train_pipeline += Snapshot({
-                RAW_KEY             : 'volumes/raw',
-                GT_LABELS_KEY       : 'volumes/labels/neuron_ids',
-                GT_AFFINITIES_KEY   : 'volumes/affinities/gt',
-                AFFINITIES_KEY      : 'volumes/affinities/prediction',
-                LOSS_GRADIENT_KEY   : 'volumes/loss_gradient',
-                AFFINITIES_MASK_KEY : 'masks/affinities'
-            },
+    train_pipeline += Snapshot(
+            snapshot_datasets,
             every=snapshot_every,
             output_filename='batch_{iteration}.hdf',
-            output_dir='snapshots/',
-            additional_request=snapshot_request)
+            output_dir=snapshot_dir,
+            additional_request=snapshot_request,
+            attributes_callback=Snapshot.default_attributes_callback())
     train_pipeline += PrintProfilingStats(every=50)
 
     print("Starting training...")
@@ -233,14 +258,15 @@ def train(argv=sys.argv):
         return val
 
     def make_default_data_provider_string():
-        data_dir = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/realigned'
-        file_pattern = '*merged*fixed-offset-fixed-mask.h5'
-        return '{}/{}:{}={}:{}={}:{}={}'.format(
+        data_dir = '/groups/saalfeld/home/hanslovskyp/data/from-arlo/interpolated-combined'
+        file_pattern = 'sample_*.hdf'
+        return '{}/{}:{}={}:{}={}:{}={}:{}={}'.format(
             data_dir,
             file_pattern,
-            'RAW', gunpowder_utils.DEFAULT_PATHS['raw'],
-            'LABELS', gunpowder_utils.DEFAULT_PATHS['labels'],
-            'MASK', gunpowder_utils.DEFAULT_PATHS['mask'])
+            'RAW',               gunpowder_utils.DEFAULT_PATHS['raw'],
+            'NEURON_IDS_NOGLIA', gunpowder_utils.DEFAULT_PATHS['neuron_ids_noglia'],
+            'MASK',              'volumes/labels/mask-downsampled',
+            'GT_GLIA',           gunpowder_utils.DEFAULT_PATHS['gt_glia'])
 
     default_data_provider_string = make_default_data_provider_string()
 
@@ -255,14 +281,14 @@ def train(argv=sys.argv):
     parser.add_argument('--log-level', choices=('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'), default='INFO', type=str)
     parser.add_argument('--net-io-names', type=str, default='net_io_names.json', help='Path to file holding network input/output name specs')
     parser.add_argument('--save-checkpoint-every', type=lambda arg: bounded_integer(arg, 1), default=2000, metavar='N_BETWEEN_CHECKPOINTS', help='Make a checkpoint of the model every Nth iteration.')
-    parser.add_argument('--pre-cache-num-workers', type=lambda arg: bounded_integer(arg, 1), default=50, metavar='PRECACHE_NUM_WORKERS', help='Number of workers used to populate pre-cache')
-    parser.add_argument('--pre-cache-size', type=lambda arg: bounded_integer(arg, 1), default=100, metavar='PRECACHE_SIZE', help='Size of pre-cache')
+    parser.add_argument('--pre-cache-num-workers', type=lambda arg: bounded_integer(arg, 50), default=1, metavar='PRECACHE_NUM_WORKERS', help='Number of workers used to populate pre-cache')
+    parser.add_argument('--pre-cache-size', type=lambda arg: bounded_integer(arg, 100), default=1, metavar='PRECACHE_SIZE', help='Size of pre-cache')
     parser.add_argument('--ignore-labels-for-slip', action='store_true')
     parser.add_argument('--affinity-neighborhood-x', nargs='+', type=int, default=(-1,))
     parser.add_argument('--affinity-neighborhood-y', nargs='+', type=int, default=(-1,))
     parser.add_argument('--affinity-neighborhood-z', nargs='+', type=int, default=(-1,))
     parser.add_argument('--grow-boundaries', metavar='STEPS', type=int, default=0, help='Grow boundaries for STEPS if larger than 0.')
-    parser.add_argument('--data-provider', metavar='GLOB_PATTERN[:raw=<dataset>[:labels=<dataset>:[mask=<dataset>]]]', default=(default_data_provider_string,), nargs='+', help='Add data provider.')
+    parser.add_argument('--data-provider', metavar='GLOB_PATTERN[:raw=<dataset>[:neuron_ids_noglia=<dataset>[:mask=<dataset>[:glia_gt=<dataset>]]]]', default=(default_data_provider_string,), nargs='+', help='Add data provider.')
 
     args = parser.parse_args(argv)
     log_levels=dict(DEBUG=logging.DEBUG, INFO=logging.INFO, WARN=logging.WARN, ERROR=logging.ERROR, CRITICAL=logging.CRITICAL)
@@ -287,7 +313,7 @@ def train(argv=sys.argv):
     logging.basicConfig(level=log_levels[args.log_level])
 
     _logger.info('Got data providers from user: %s', args.data_provider)
-    data_providers = gunpowder_utils.make_data_providers(*args.data_provider)
+    data_providers = gunpowder_utils.make_data_providers(*args.data_provider, required_paths=('raw', 'neuron_ids_noglia', 'mask', 'glia_mask', 'gt_glia'))
     _logger.info("Data providers: %s'", data_providers)
 
 
@@ -301,15 +327,18 @@ def train(argv=sys.argv):
     inputs = {
         net_io_names[io_keys.RAW]           : RAW_KEY,
         net_io_names[io_keys.GT_AFFINITIES] : GT_AFFINITIES_KEY,
-        net_io_names[io_keys.GT_LABELS]     : GT_LABELS_KEY
+        net_io_names[io_keys.GT_LABELS]     : LABELS_KEY,
+        net_io_names[io_keys.GT_GLIA]       : GT_GLIA_KEY,
     }
+
+    snapshot_dir = os.path.join(args.training_directory, 'snapshots')
 
     if trained_until < args.mse_iterations:
 
         mse_loss = tf_util.loss_affinities_with_glia(
-            net_io_names,
-            'glia-mse-affinities-mse-loss-optimizer',
-            'glia-mse-affinities-mse-loss')
+            net_io_names=net_io_names,
+            optimizer_or_name='glia-mse-affinities-mse-loss-optimizer',
+            summary_name='glia-mse-affinities-mse-loss')
 
         train_until(
             data_providers=data_providers,
@@ -320,9 +349,11 @@ def train(argv=sys.argv):
             output_shape=args.output_shape,
             loss=None,
             optimizer=mse_loss,
-            summary=net_io_names[io_keys.SUMMARY],
+            summary='glia-mse-affinities-mse-loss:0',
             tensor_affinities=net_io_names[io_keys.AFFINITIES],
             tensor_affinities_mask=net_io_names[io_keys.AFFINITIES_MASK],
+            tensor_glia=net_io_names[io_keys.GLIA],
+            tensor_glia_mask=net_io_names[io_keys.GLIA_MASK],
             save_checkpoint_every=args.save_checkpoint_every,
             pre_cache_size=args.pre_cache_size,
             pre_cache_num_workers=args.pre_cache_num_workers,
@@ -331,16 +362,17 @@ def train(argv=sys.argv):
             renumber_connected_components=False,
             network_inputs=inputs,
             ignore_labels_for_slip=args.ignore_labels_for_slip,
-            grow_boundaries=args.grow_boundaries)
+            grow_boundaries=args.grow_boundaries,
+            snapshot_dir=snapshot_dir)
 
     if tf.train.latest_checkpoint('.') and int(tf.train.latest_checkpoint('.').split('_')[-1]) < args.mse_iterations:
         raise Exception("Inconsistency!")
 
     malis_loss =tf_util.malis_loss_with_glia(
-        net_io_names,
-        neighborhood,
-        'glia-mse-affinities-mse-loss-optimizer',
-        'glia-mse-affinities-mse-loss')
+        net_io_names=net_io_names,
+        neighborhood=neighborhood,
+        optimizer_or_name='glia-mse-affinities-mse-loss-optimizer',
+        summary_name='glia-mse-affinities-mse-loss')
 
     train_until(
             data_providers=data_providers,
@@ -351,9 +383,11 @@ def train(argv=sys.argv):
         output_shape=args.output_shape,
         loss=None,
         optimizer=malis_loss,
-        summary='summary_malis_loss:0',
+        summary='glia-mse-affinities-mse-loss:0',
         tensor_affinities=net_io_names[io_keys.AFFINITIES],
         tensor_affinities_mask=net_io_names[io_keys.AFFINITIES_MASK],
+        tensor_glia=net_io_names[io_keys.GLIA],
+        tensor_glia_mask=net_io_names[io_keys.GLIA_MASK],
         save_checkpoint_every=args.save_checkpoint_every,
         pre_cache_size=args.pre_cache_size,
         pre_cache_num_workers=args.pre_cache_num_workers,
@@ -362,4 +396,5 @@ def train(argv=sys.argv):
         renumber_connected_components=True,
         network_inputs=inputs,
         ignore_labels_for_slip=args.ignore_labels_for_slip,
-        grow_boundaries=args.grow_boundaries)
+        grow_boundaries=args.grow_boundaries,
+        snapshot_dir=snapshot_dir)

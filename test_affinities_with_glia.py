@@ -12,8 +12,8 @@ import eqip.training
 #                     help='Path to file holding network input/output name specs')
 # parser.add_argument('--num-affinities', type=int, default=3)
 
-experiment_dir = os.path.join(os.getcwd(), 'test_mk_net')
-print(experiment_dir)
+experiment_dir = os.path.join(os.getcwd(), 'test-affinities-with-glia')
+print("Experiment dir:", experiment_dir)
 unet_meta = os.path.join(experiment_dir, 'unet.meta')
 unet_inference_meta = os.path.join(experiment_dir, 'unet-inference.meta')
 net_io_names = os.path.join(experiment_dir, 'net_io_names.json')
@@ -32,12 +32,16 @@ train_net_argv = (
     # '--help',
     '--training-directory=%s' % experiment_dir,
     '--meta-graph-filename=%s' % unet_meta,
-    '--mse-iterations=50',
-    '--malis-iterations=50',
+    '--mse-iterations=2000',
+    '--malis-iterations=0',
     '--net-io-names=%s' % net_io_names,
-    '--save-checkpoint-every=50',
-    '--snapshot-every=10',
+    '--save-checkpoint-every=100',
+    '--snapshot-every=20',
     '--ignore-labels-for-slip',
     '--grow-boundaries=0')
+
+import logging
+logging.basicConfig()
+logging.getLogger('gunpowder.nodes.balance_labels').setLevel(logging.DEBUG)
 
 eqip.training.affinities_on_interpolated_ground_truth_with_glia(argv=train_net_argv)

@@ -20,8 +20,9 @@ class _Network(object):
         self.gt_affinities_name       = None
         self.affinities_mask_name     = None
         self.gt_labels_name           = None
-        self.aff_mse_optimizer_name   = None
-        self.mse_loss_name            = None
+        self.glia_no_batch_name       = None
+        self.glia_mask_name           = None
+        self.gt_glia_name             = None
         self.merged_name              = None
         self.affinities_cropped_name  = None
         self.created_network          = False
@@ -99,11 +100,10 @@ class _Network(object):
         gt_glia           = tf.placeholder(tf.int64, shape=glia_shape[1:])
         glia_mask         = tf.placeholder(tf.int64, shape=glia_shape[1:])
 
-        glia_mse_loss, glia_mse_optimizier = tf_util.add_mse_loss_with_adam(
-            predictions = glia_no_batch,
+        glia_mse_loss = tf.losses.mean_squared_error(
             labels      = gt_glia,
-            weights     = glia_mask,
-            opt         = 'glia_%s_adam_optimizer' % io_keys.MSE_PREFIX)
+            predictions = glia_no_batch,
+            weights     = glia_mask)
 
         tf.summary.scalar('summary_%s_%s' % (io_keys.MSE_PREFIX, io_keys.LOSS), glia_mse_loss)
         merged = tf.summary.merge_all()
@@ -113,7 +113,9 @@ class _Network(object):
         self.gt_affinities_name       = gt_affinities.name
         self.affinities_mask_name     = affinities_mask.name
         self.gt_labels_name           = gt_labels.name
-        self.glia_mse_optimizer_name  = glia_mse_optimizier.name
+        self.glia_no_batch_name       = glia_no_batch.name
+        self.glia_mask_name           = glia_mask.name
+        self.gt_glia_name             = gt_glia.name
         self.glia_loss_name           = glia_mse_loss.name
         self.merged_name              = merged.name
         self.affinities_cropped_name  = affinities_cropped.name
@@ -131,10 +133,12 @@ class _Network(object):
             io_keys.GT_AFFINITIES                              : self.gt_affinities_name,
             io_keys.AFFINITIES_MASK                            : self.affinities_mask_name,
             io_keys.GT_LABELS                                  : self.gt_labels_name,
-            '%s_%s' % (io_keys.MSE_PREFIX, io_keys.OPTIMIZIER) : self.aff_mse_optimizer_name,
-            '%s_%s' % (io_keys.MSE_PREFIX, io_keys.LOSS)       : self.mse_loss_name,
+            io_keys.GT_GLIA                                    : self.gt_glia_name,
+            io_keys.GLIA                                       : self.glia_no_batch_name,
+            io_keys.GLIA_MASK                                  : self.glia_mask_name,
             io_keys.SUMMARY                                    : self.merged_name,
-            io_keys.AFFINITIES_CROPPED                         : self.affinities_cropped_name
+            io_keys.AFFINITIES_CROPPED                         : self.affinities_cropped_name,
+            io_keys.glia_loss_name("mse")                      : self.glia_loss_name
         }
 
         with open(net_io_names, 'w') as f:
