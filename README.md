@@ -17,6 +17,6 @@ pip install malis==1.0
 pip install git+https://github.com/funkey/augment@4a42b01ccad7607b47a1096e904220729dbcb80a
 pip install git+https://github.com/funkey/gunpowder@06dfc8f5527775e2dc741fd0f33898e3d02bc2c2
 pip install git+https://github.com/funkelab/daisy@74b735465954fb01e759d187785ba140e7230f5e
-pip install git+https://github.com/hanslovsky/gunpowder-nodes@54bfa540f14cf384472ccfd7e40c481ff5b170b5
+pip install git+https://github.com/hanslovsky/gunpowder-nodes@7f21b7aa02ba2756e6a6d04c5d4e89bfb1e1196a
 pip install git+https://github.com/hanslovsky/eqip@abe20841ccac0bd4badddc5fa8b2f73ae2f94afb
 ```
