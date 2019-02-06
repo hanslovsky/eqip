@@ -247,7 +247,7 @@ def train_until(
     print("Training finished")
 
 
-def train(argv=sys.argv):
+def train(argv=sys.argv[1:]):
 
     import argparse
 

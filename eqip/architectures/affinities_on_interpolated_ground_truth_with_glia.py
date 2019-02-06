@@ -160,7 +160,7 @@ def _inference_net(unet_inference_meta, num_final_features):
     network.mk_net(input_shape=input_shape, meta_graph_filename=unet_inference_meta)
 
 
-def make(argv=sys.argv):
+def make(argv=sys.argv[1:]):
 
     import argparse
 
