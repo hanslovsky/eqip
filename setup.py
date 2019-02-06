@@ -15,8 +15,10 @@ install_requires = [
 
 console_scripts = [
     'make-affinities-on-interpolated-ground-truth=eqip.architectures:affinities_on_interpolated_ground_truth',
+    'make-affinities-on-interpolated-ground-truth-with-glia=eqip.architectures:affinities_on_interpolated_ground_truth_with_glia',
     'make-affinities-on-interpolated-ground-truth-combine-affinities=eqip.architectures:affinities_on_interpolated_ground_truth_combine_affinities',
     'train-affinities-on-interpolated-ground-truth=eqip.training:affinities_on_interpolated_ground_truth',
+    'train-affinities-on-interpolated-ground-truth-with-glia=eqip.training:affinities_on_interpolated_ground_truth_with_glia',
     'train-affinities-on-interpolated-ground-truth-combine-affinities=eqip.training:affinities_on_interpolated_ground_truth_combine_affinities',
     'create-setup=eqip:create_setup',
     'predict-affinities=eqip.inference:predict_affinities_daisy',
