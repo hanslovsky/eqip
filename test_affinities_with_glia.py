@@ -35,10 +35,10 @@ train_net_argv = (
     '--mse-iterations=200000',
     '--malis-iterations=0',
     '--net-io-names=%s' % net_io_names,
-    '--save-checkpoint-every=500',
-    '--pre-cache-num-workers=2000',
+    '--save-checkpoint-every=2000',
+    '--pre-cache-num-workers=25',
     '--pre-cache-size=50',
-    '--snapshot-every=20',
+    '--snapshot-every=500',
     '--ignore-labels-for-slip',
     '--grow-boundaries=0')
 
