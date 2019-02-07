@@ -2,6 +2,9 @@ from __future__ import print_function
 import glob
 
 import logging
+
+from gpn.map_numpy_array import MapNumpyArray
+
 logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
 
@@ -121,7 +124,8 @@ def train_until(
         RandomLocation() + # chose a random location inside the provided arrays
         Reject(GT_MASK_KEY) + # reject batches wich do contain less than 50% labelled data
         Reject(LABELS_KEY, min_masked=0.0, reject_probability=0.95) +
-        NumpyRequire(GT_GLIA_KEY, dtype=np.int64) # this is necessary because gunpowder 1.3 only understands int64, not uint64
+        MapNumpyArray(lambda array: np.require(array, dtype=np.int64), GT_GLIA_KEY)
+        # NumpyRequire(GT_GLIA_KEY, dtype=np.int64) # this is necessary because gunpowder 1.3 only understands int64, not uint64
 
         for provider in data_providers)
 
