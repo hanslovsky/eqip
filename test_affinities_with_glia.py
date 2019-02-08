@@ -3,6 +3,8 @@ import os
 import eqip.architectures
 import eqip.training
 
+import logging
+
 # parser.add_argument('--meta-graph-filename', default='unet.meta', type=str,
 #                     help='Filename with information about meta graph for network.')
 # parser.add_argument('--inference-meta-graph-filename', default='unet-inference.meta', type=str, metavar='FILENAME')
@@ -36,14 +38,13 @@ train_net_argv = (
     '--malis-iterations=0',
     '--net-io-names=%s' % net_io_names,
     '--save-checkpoint-every=2000',
-    '--pre-cache-num-workers=25',
-    '--pre-cache-size=50',
-    '--snapshot-every=500',
+    '--pre-cache-num-workers=40',
+    '--pre-cache-size=200',
+    '--snapshot-every=50',
     '--ignore-labels-for-slip',
     '--grow-boundaries=0')
 
 import logging
 logging.basicConfig()
-logging.getLogger('gunpowder.nodes.balance_labels').setLevel(logging.DEBUG)
 
 eqip.training.affinities_on_interpolated_ground_truth_with_glia(argv=train_net_argv)

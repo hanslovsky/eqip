@@ -1,20 +1,23 @@
 from __future__ import print_function
-import glob
+
+from .. import gunpowder_utils
+from .. import io_keys
+from .. import tf_util
 
 import logging
 
+from gpn import Log
 from gpn.map_numpy_array import MapNumpyArray
 
 logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
 
-from gpn import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment, NumpyRequire
-from gunpowder import ArrayKey, Hdf5Source, Coordinate, BatchRequest, Normalize, Pad, RandomLocation, Reject, \
+from gpn import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment
+from gunpowder import Hdf5Source, Coordinate, BatchRequest, Normalize, Pad, RandomLocation, Reject, \
     ArraySpec, IntensityAugment, RandomProvider, GrowBoundary, IntensityScaleShift, \
     PrintProfilingStats, build, PreCache
 from gunpowder.contrib import \
     ZeroOutConstSections
-from gunpowder.ext import malis
 from gunpowder.nodes import \
     AddAffinities,\
     RenumberConnectedComponents,\
@@ -27,21 +30,16 @@ import numpy as np
 import json
 import sys
 
-from .. import gunpowder_utils
-from .. import io_keys
-from .. import tf_util
-
 RAW_KEY              = gunpowder_utils.RAW_KEY
 DEFECT_MASK_KEY      = gunpowder_utils.DEFECT_MASK_KEY
 LABELS_KEY           = gunpowder_utils.NEURON_IDS_NO_GLIA_KEY
 GT_MASK_KEY          = gunpowder_utils.MASK_KEY
-TRAINING_MASK_KEY    = gunpowder_utils.TRAINING_MASK_KEY
 LOSS_GRADIENT_KEY    = gunpowder_utils.LOSS_GRADIENT_KEY
 AFFINITIES_KEY       = gunpowder_utils.AFFINITIES_KEY
 GT_AFFINITIES_KEY    = gunpowder_utils.GT_AFFINITIES_KEY
 AFFINITIES_MASK_KEY  = gunpowder_utils.AFFINITIES_MASK_KEY
 AFFINITIES_SCALE_KEY = gunpowder_utils.AFFINITIES_SCALE_KEY
-GLIA_MASK_KEY        = GT_MASK_KEY
+GLIA_MASK_KEY        = gunpowder_utils.GLIA_MASK_KEY
 GLIA_KEY             = gunpowder_utils.GLIA_KEY
 GLIA_SCALE_KEY       = gunpowder_utils.GLIA_SCALE_KEY
 GT_GLIA_KEY          = gunpowder_utils.GT_GLIA_KEY
@@ -71,7 +69,7 @@ def train_until(
         grow_boundaries,
         snapshot_dir):
 
-    ignore_keys_for_slip = (LABELS_KEY, GT_MASK_KEY) if ignore_labels_for_slip else ()
+    ignore_keys_for_slip = (LABELS_KEY, GT_MASK_KEY, GT_GLIA_KEY, GLIA_MASK_KEY) if ignore_labels_for_slip else ()
 
     defect_dir = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/defects'
     if tf.train.latest_checkpoint('.'):
@@ -121,9 +119,10 @@ def train_until(
         # size more or less irrelevant as followed by Reject Node
         Pad(RAW_KEY, None) +
         Pad(GT_MASK_KEY, None) +
+        Pad(GLIA_MASK_KEY, None) +
+        # Pad(LABELS_KEY, None) +
+        # Pad(GT_GLIA_KEY, None) +
         RandomLocation() + # chose a random location inside the provided arrays
-        Reject(GT_MASK_KEY) + # reject batches wich do contain less than 50% labelled data
-        Reject(LABELS_KEY, min_masked=0.0, reject_probability=0.95) +
         MapNumpyArray(lambda array: np.require(array, dtype=np.int64), GT_GLIA_KEY)
         # NumpyRequire(GT_GLIA_KEY, dtype=np.int64) # this is necessary because gunpowder 1.3 only understands int64, not uint64
 
@@ -141,14 +140,14 @@ def train_until(
             os.path.join(defect_dir, 'sample_ABC_padded_20160501.defects.hdf'),
             datasets={
                 RAW_KEY        : 'defect_sections/raw',
-                ALPHA_MASK_KEY : 'defect_sections/mask',
+                DEFECT_MASK_KEY : 'defect_sections/mask',
             },
             array_specs={
                 RAW_KEY        : ArraySpec(voxel_size=input_voxel_size),
-                ALPHA_MASK_KEY : ArraySpec(voxel_size=input_voxel_size),
+                DEFECT_MASK_KEY : ArraySpec(voxel_size=input_voxel_size),
             }
         ) +
-        RandomLocation(min_masked=0.05, mask=ALPHA_MASK_KEY) +
+        RandomLocation(min_masked=0.05, mask=DEFECT_MASK_KEY) +
         Normalize(RAW_KEY) +
         IntensityAugment(RAW_KEY, 0.9, 1.1, -0.1, 0.1, z_section_wise=True) +
         ElasticAugment(
@@ -171,24 +170,35 @@ def train_until(
             augmentation_probability=0.5,
             subsample=8
         )
+
+    train_pipeline += Log.log_numpy_array_stats_after_process(GT_MASK_KEY, 'min', 'max', 'dtype', logging_prefix='%s: before misalign: ' % GT_MASK_KEY)
     train_pipeline += Misalign(z_resolution=360, prob_slip=0.05, prob_shift=0.05, max_misalign=(360,) * 2, ignore_keys_for_slip=ignore_keys_for_slip)
+    train_pipeline += Log.log_numpy_array_stats_after_process(GT_MASK_KEY, 'min', 'max', 'dtype', logging_prefix='%s: after  misalign: ' % GT_MASK_KEY)
+
+    train_pipeline += Reject(mask=GT_MASK_KEY, min_masked=0.5)  # reject batches wich do contain less than 50% labelled data
+    train_pipeline += Reject(mask=GLIA_MASK_KEY, min_masked=0.5)
+    train_pipeline += Log.log_numpy_array_stats_after_process(GT_MASK_KEY, 'min', 'max', 'dtype', logging_prefix='%s: after  reject:   ' % GT_MASK_KEY)
+
     train_pipeline += SimpleAugment(transpose_only=[1,2])
     train_pipeline += IntensityAugment(RAW_KEY, 0.9, 1.1, -0.1, 0.1, z_section_wise=True)
     train_pipeline += DefectAugment(RAW_KEY,
-                      prob_missing=0.03,
-                      prob_low_contrast=0.01,
-                      prob_artifact=0.03,
-                      artifact_source=artifact_source,
-                      artifacts=RAW_KEY,
-                      artifacts_mask=ALPHA_MASK_KEY,
-                      contrast_scale=0.5)
+                                    prob_missing=0.03,
+                                    prob_low_contrast=0.01,
+                                    prob_artifact=0.03,
+                                    artifact_source=artifact_source,
+                                    artifacts=RAW_KEY,
+                                    artifacts_mask=DEFECT_MASK_KEY,
+                                    contrast_scale=0.5)
     train_pipeline += IntensityScaleShift(RAW_KEY, 2, -1)
     train_pipeline += ZeroOutConstSections(RAW_KEY)
+
     if grow_boundaries > 0:
         train_pipeline += GrowBoundary(LABELS_KEY, GT_MASK_KEY, steps=grow_boundaries, only_xy=True)
 
+    _logger.info("Renumbering connected components? %s", renumber_connected_components)
     if renumber_connected_components:
         train_pipeline += RenumberConnectedComponents(labels=LABELS_KEY)
+
 
     train_pipeline += AddAffinities(
             affinity_neighborhood=affinity_neighborhood,
@@ -206,6 +216,7 @@ def train_until(
         LOSS_GRADIENT_KEY: 'volumes/loss_gradient',
         AFFINITIES_MASK_KEY: 'masks/affinities',
         GLIA_KEY: 'volumes/labels/glia_pred',
+        GT_MASK_KEY: 'masks/gt',
         GLIA_MASK_KEY: 'masks/glia'}
 
     if balance_labels:
@@ -215,7 +226,8 @@ def train_until(
     snapshot_datasets[GLIA_SCALE_KEY] = 'masks/glia-scale'
 
 
-    train_pipeline += PreCache(cache_size=pre_cache_size, num_workers=pre_cache_num_workers)
+    if (pre_cache_size > 0 and pre_cache_num_workers > 0):
+        train_pipeline += PreCache(cache_size=pre_cache_size, num_workers=pre_cache_num_workers)
     train_pipeline += Train(
             summary=summary,
             graph=meta_graph_filename,
@@ -237,6 +249,7 @@ def train_until(
                 GLIA_KEY             : ArraySpec(voxel_size=output_voxel_size)
             }
         )
+
     train_pipeline += Snapshot(
             snapshot_datasets,
             every=snapshot_every,
@@ -244,6 +257,7 @@ def train_until(
             output_dir=snapshot_dir,
             additional_request=snapshot_request,
             attributes_callback=Snapshot.default_attributes_callback())
+
     train_pipeline += PrintProfilingStats(every=50)
 
     print("Starting training...")
@@ -267,12 +281,13 @@ def train(argv=sys.argv[1:]):
     def make_default_data_provider_string():
         data_dir = '/groups/saalfeld/home/hanslovskyp/data/from-arlo/interpolated-combined'
         file_pattern = 'sample_*.hdf'
-        return '{}/{}:{}={}:{}={}:{}={}:{}={}'.format(
+        return '{}/{}:{}={}:{}={}:{}={}:{}={}:{}={}'.format(
             data_dir,
             file_pattern,
             'RAW',               gunpowder_utils.DEFAULT_PATHS['raw'],
             'NEURON_IDS_NOGLIA', gunpowder_utils.DEFAULT_PATHS['neuron_ids_noglia'],
             'MASK',              'volumes/labels/mask-downsampled',
+            'GLIA_MASK',         'volumes/labels/mask-downsampled',
             'GT_GLIA',           gunpowder_utils.DEFAULT_PATHS['gt_glia'])
 
     default_data_provider_string = make_default_data_provider_string()
@@ -289,7 +304,7 @@ def train(argv=sys.argv[1:]):
     parser.add_argument('--net-io-names', type=str, default='net_io_names.json', help='Path to file holding network input/output name specs')
     parser.add_argument('--save-checkpoint-every', type=lambda arg: bounded_integer(arg, 1), default=2000, metavar='N_BETWEEN_CHECKPOINTS', help='Make a checkpoint of the model every Nth iteration.')
     parser.add_argument('--pre-cache-num-workers', type=lambda arg: bounded_integer(arg, 1), default=1, metavar='PRECACHE_NUM_WORKERS', help='Number of workers used to populate pre-cache')
-    parser.add_argument('--pre-cache-size', type=lambda arg: bounded_integer(arg, 1), default=1, metavar='PRECACHE_SIZE', help='Size of pre-cache')
+    parser.add_argument('--pre-cache-size', type=lambda arg: bounded_integer(arg, 0), default=1, metavar='PRECACHE_SIZE', help='Size of pre-cache')
     parser.add_argument('--ignore-labels-for-slip', action='store_true')
     parser.add_argument('--affinity-neighborhood-x', nargs='+', type=int, default=(-1,))
     parser.add_argument('--affinity-neighborhood-y', nargs='+', type=int, default=(-1,))
@@ -379,7 +394,7 @@ def train(argv=sys.argv[1:]):
         net_io_names=net_io_names,
         neighborhood=neighborhood,
         optimizer_or_name='glia-mse-affinities-mse-loss-optimizer',
-        summary_name='glia-mse-affinities-mse-loss')
+        summary_name='glia-mse-affinities-malis-loss')
 
     train_until(
             data_providers=data_providers,
@@ -390,7 +405,7 @@ def train(argv=sys.argv[1:]):
         output_shape=args.output_shape,
         loss=None,
         optimizer=malis_loss,
-        summary='glia-mse-affinities-mse-loss:0',
+        summary='glia-mse-affinities-malis-loss:0',
         tensor_affinities=net_io_names[io_keys.AFFINITIES],
         tensor_affinities_mask=net_io_names[io_keys.AFFINITIES_MASK],
         tensor_glia=net_io_names[io_keys.GLIA],
