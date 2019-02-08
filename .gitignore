@@ -110,3 +110,5 @@ unet.meta
 snapshots
 log
 test-affinities-with-glia
+checkpoint
+unet_checkpoint*
