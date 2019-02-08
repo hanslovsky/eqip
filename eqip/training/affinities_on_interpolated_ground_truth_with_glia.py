@@ -32,7 +32,7 @@ from .. import io_keys
 from .. import tf_util
 
 RAW_KEY              = gunpowder_utils.RAW_KEY
-ALPHA_MASK_KEY       = gunpowder_utils.ALPHA_MASK_KEY
+DEFECT_MASK_KEY      = gunpowder_utils.DEFECT_MASK_KEY
 LABELS_KEY           = gunpowder_utils.NEURON_IDS_NO_GLIA_KEY
 GT_MASK_KEY          = gunpowder_utils.MASK_KEY
 TRAINING_MASK_KEY    = gunpowder_utils.TRAINING_MASK_KEY

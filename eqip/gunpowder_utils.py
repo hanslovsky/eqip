@@ -9,7 +9,7 @@ from gunpowder import ArrayKey, ArraySpec, Hdf5Source
 
 
 RAW_KEY                = ArrayKey('RAW')
-ALPHA_MASK_KEY         = ArrayKey('ALPHA_MASK')
+DEFECT_MASK_KEY        = ArrayKey('DEFECT_MASK')
 LABELS_KEY             = ArrayKey('LABELS')
 NEURON_IDS_NO_GLIA_KEY = ArrayKey('NEURON_IDS_NOGLIA')
 MASK_KEY               = ArrayKey('MASK')
