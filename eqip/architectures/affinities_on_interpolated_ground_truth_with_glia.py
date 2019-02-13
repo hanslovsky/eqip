@@ -98,7 +98,7 @@ class _Network(object):
         # TODO update tensorflow on docker image to use tf.uint64
         gt_labels         = tf.placeholder(tf.int64, shape=output_shape[1:])
         gt_glia           = tf.placeholder(tf.int64, shape=glia_shape[1:])
-        glia_mask         = tf.placeholder(tf.int64, shape=glia_shape[1:])
+        glia_mask         = tf.placeholder(tf.float32, shape=glia_shape[1:])
 
         glia_mse_loss = tf.losses.mean_squared_error(
             labels      = gt_glia,
