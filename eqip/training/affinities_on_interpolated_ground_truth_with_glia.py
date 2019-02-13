@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, division
 
 from .. import gunpowder_utils
 from .. import io_keys
@@ -43,6 +43,20 @@ GLIA_MASK_KEY        = gunpowder_utils.GLIA_MASK_KEY
 GLIA_KEY             = gunpowder_utils.GLIA_KEY
 GLIA_SCALE_KEY       = gunpowder_utils.GLIA_SCALE_KEY
 GT_GLIA_KEY          = gunpowder_utils.GT_GLIA_KEY
+
+NETWORK_INPUT_SHAPE  = Coordinate((43, 430, 430))
+NETWORK_OUTPUT_SHAPE = Coordinate((65,  70,  70))
+
+INPUT_VOXEL_SIZE  = Coordinate((360.0,  36.0,  36.0))
+OUTPUT_VOXEL_SIZE = Coordinate((120.0, 108.0, 108.0))
+
+NETWORK_INPUT_SHAPE_WORLD  = INPUT_VOXEL_SIZE  * NETWORK_INPUT_SHAPE
+NETWORK_OUTPUT_SHAPE_WORLD = OUTPUT_VOXEL_SIZE * NETWORK_OUTPUT_SHAPE
+
+SHAPE_DIFF_WORLD  = NETWORK_INPUT_SHAPE_WORLD - NETWORK_OUTPUT_SHAPE_WORLD
+SHAPE_DIFF_INPUT  = SHAPE_DIFF_WORLD / INPUT_VOXEL_SIZE
+SHAPE_DIFF_OUTPUT = SHAPE_DIFF_WORLD / OUTPUT_VOXEL_SIZE
+PADDING_OUTPUT    = SHAPE_DIFF_OUTPUT / 2
 
 def train_until(
         data_providers,
@@ -120,6 +134,8 @@ def train_until(
         Pad(RAW_KEY, None) +
         Pad(GT_MASK_KEY, None) +
         Pad(GLIA_MASK_KEY, None) +
+        Pad(LABELS_KEY, size=NETWORK_OUTPUT_SHAPE / 2, value=np.uint64(-3)) +
+        Pad(GT_GLIA_KEY, size=NETWORK_OUTPUT_SHAPE / 2) +
         # Pad(LABELS_KEY, None) +
         # Pad(GT_GLIA_KEY, None) +
         RandomLocation() + # chose a random location inside the provided arrays
@@ -280,7 +296,7 @@ def train(argv=sys.argv[1:]):
 
     def make_default_data_provider_string():
         data_dir = '/groups/saalfeld/home/hanslovskyp/data/from-arlo/interpolated-combined'
-        file_pattern = 'sample_*.hdf'
+        file_pattern = 'sample_*.h5'
         return '{}/{}:{}={}:{}={}:{}={}:{}={}:{}={}'.format(
             data_dir,
             file_pattern,
