@@ -1,0 +1,1 @@
+from .templates import make_architecture, make_training

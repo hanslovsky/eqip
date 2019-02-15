@@ -32,7 +32,8 @@ packages = [
     'eqip',
     'eqip.architectures',
     'eqip.training',
-    'eqip.inference'
+    'eqip.inference',
+    'eqip.experiment'
 ]
 
 here = os.path.abspath(os.path.dirname(__file__))
