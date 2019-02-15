@@ -55,7 +55,7 @@ def _create_setup(experiment_dir):
     parser.add_argument('--mse-iterations', required=True, type=lambda arg: bounded_integer(arg, lower=0))
     parser.add_argument('--malis-iterations', required=True, type=lambda arg: bounded_integer(arg, lower=0))
     parser.add_argument('--docker-container', required=True)
-    parser.add_argument('--data-provider', required=False, default=os.path.join(experiment_dir, 'data/*.h5'))
+    parser.add_argument('--data-provider', required=False, default=os.path.join(experiment_dir, 'data/*'))
 
     args, unknown = parser.parse_known_args()
 
