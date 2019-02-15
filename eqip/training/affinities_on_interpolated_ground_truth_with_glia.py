@@ -58,6 +58,8 @@ SHAPE_DIFF_INPUT  = SHAPE_DIFF_WORLD / INPUT_VOXEL_SIZE
 SHAPE_DIFF_OUTPUT = SHAPE_DIFF_WORLD / OUTPUT_VOXEL_SIZE
 PADDING_OUTPUT    = SHAPE_DIFF_OUTPUT / 2
 
+# TODO fix padding
+
 def train_until(
         data_providers,
         affinity_neighborhood,
@@ -139,6 +141,8 @@ def train_until(
         # Pad(LABELS_KEY, None) +
         # Pad(GT_GLIA_KEY, None) +
         RandomLocation() + # chose a random location inside the provided arrays
+        Reject(mask=GT_MASK_KEY, min_masked=0.5) +
+        Reject(mask=GLIA_MASK_KEY, min_masked=0.5) +
         MapNumpyArray(lambda array: np.require(array, dtype=np.int64), GT_GLIA_KEY)
         # NumpyRequire(GT_GLIA_KEY, dtype=np.int64) # this is necessary because gunpowder 1.3 only understands int64, not uint64
 
@@ -178,6 +182,7 @@ def train_until(
 
     train_pipeline  = data_sources
     train_pipeline += RandomProvider()
+
     train_pipeline += ElasticAugment(
             voxel_size=(360, 36, 36),
             control_point_spacing=(4, 40, 40),
@@ -190,10 +195,6 @@ def train_until(
     train_pipeline += Log.log_numpy_array_stats_after_process(GT_MASK_KEY, 'min', 'max', 'dtype', logging_prefix='%s: before misalign: ' % GT_MASK_KEY)
     train_pipeline += Misalign(z_resolution=360, prob_slip=0.05, prob_shift=0.05, max_misalign=(360,) * 2, ignore_keys_for_slip=ignore_keys_for_slip)
     train_pipeline += Log.log_numpy_array_stats_after_process(GT_MASK_KEY, 'min', 'max', 'dtype', logging_prefix='%s: after  misalign: ' % GT_MASK_KEY)
-
-    train_pipeline += Reject(mask=GT_MASK_KEY, min_masked=0.5)  # reject batches wich do contain less than 50% labelled data
-    train_pipeline += Reject(mask=GLIA_MASK_KEY, min_masked=0.5)
-    train_pipeline += Log.log_numpy_array_stats_after_process(GT_MASK_KEY, 'min', 'max', 'dtype', logging_prefix='%s: after  reject:   ' % GT_MASK_KEY)
 
     train_pipeline += SimpleAugment(transpose_only=[1,2])
     train_pipeline += IntensityAugment(RAW_KEY, 0.9, 1.1, -0.1, 0.1, z_section_wise=True)
