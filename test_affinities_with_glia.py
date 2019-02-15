@@ -32,6 +32,7 @@ eqip.architectures.affinities_on_interpolated_ground_truth_with_glia(argv=mknet_
 unet_meta = os.path.join(experiment_dir, 'unet')
 train_net_argv = (
     # '--help',
+    '--data-provider=/groups/saalfeld/home/hanslovskyp/data/from-arlo/interpolated-combined/sample_*.n5',
     '--log-level=DEBUG',
     '--training-directory=%s' % experiment_dir,
     '--meta-graph-filename=%s' % unet_meta,
