@@ -24,7 +24,7 @@ console_scripts = [
     'predict-affinities=eqip.inference:predict_affinities_daisy',
     'list-latest-checkpoint=eqip:list_latest_checkpoint',
     'list-latest-snapshot=eqip:list_latest_snapshot',
-    'create-experiment=eqip.experiment.create_experiment'
+    'create-experiment=eqip.experiment:create_experiment'
 ]
 
 entry_points = dict(console_scripts=console_scripts)
