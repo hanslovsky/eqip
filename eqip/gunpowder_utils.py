@@ -6,6 +6,8 @@ import itertools
 
 from gunpowder import ArrayKey, ArraySpec, Hdf5Source
 
+from gpn import Z5Source
+
 
 
 RAW_KEY                = ArrayKey('RAW')
@@ -33,7 +35,7 @@ _logger.info('Lower key identifier to key mapping: %s', _lower_key_identifier_to
 DEFAULT_PATHS = {
     RAW_KEY.identifier.lower()                : 'volumes/raw',
     LABELS_KEY.identifier.lower()             : 'volumes/labels/neuron_ids-downsampled',
-    MASK_KEY.identifier.lower()               : 'volumes/masks/neuron_ids-downsampled',
+    MASK_KEY.identifier.lower()               : 'volumes/labels/mask-downsampled',
     GT_GLIA_KEY.identifier.lower()            : 'volumes/labels/glia-downsampled',
     GLIA_MASK_KEY.identifier.lower()          : 'volumes/labels/mask-downsampled',
     NEURON_IDS_NO_GLIA_KEY.identifier.lower() : 'volumes/labels/neuron_ids_noglia-downsampled'
@@ -65,14 +67,16 @@ def make_data_provider(provider_string, required_paths, default_paths, lower_key
 
     datasets = {lower_key_identifier_to_key[k] : v for k, v in paths.items()}
 
+    specs = {
+        MASK_KEY:      ArraySpec(interpolatable=False),
+        GLIA_MASK_KEY: ArraySpec(interpolatable=False)
+    }
+
     for data in glob.glob(pattern):
-        h5_source = Hdf5Source(
-            data,
-            datasets=datasets,
-            array_specs={
-                MASK_KEY:      ArraySpec(interpolatable=False),
-                GLIA_MASK_KEY: ArraySpec(interpolatable=False)
-            }
-        )
-        data_providers.append(h5_source)
+        if data.endswith('h5') or data.endswith('hdf'):
+            source = Hdf5Source(data, datasets=datasets, array_specs=specs)
+        else:
+            source = Z5Source(data, datasets=datasets, array_specs=specs, revert=False)
+        data_providers.append(source)
+
     return tuple(data_providers)
