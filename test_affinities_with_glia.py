@@ -32,19 +32,21 @@ eqip.architectures.affinities_on_interpolated_ground_truth_with_glia(argv=mknet_
 unet_meta = os.path.join(experiment_dir, 'unet')
 train_net_argv = (
     # '--help',
+    '--log-level=DEBUG',
     '--training-directory=%s' % experiment_dir,
     '--meta-graph-filename=%s' % unet_meta,
     '--mse-iterations=200000',
     '--malis-iterations=0',
     '--net-io-names=%s' % net_io_names,
     '--save-checkpoint-every=2000',
-    '--pre-cache-num-workers=40',
-    '--pre-cache-size=200',
+    '--pre-cache-num-workers=10',
+    '--pre-cache-size=10',
     '--snapshot-every=50',
     '--ignore-labels-for-slip',
     '--grow-boundaries=0')
 
 import logging
 logging.basicConfig()
+# logging.getLogger('gunpowder.nodes').setLevel(logging.DEBUG)
 
 eqip.training.affinities_on_interpolated_ground_truth_with_glia(argv=train_net_argv)
