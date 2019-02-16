@@ -58,7 +58,9 @@ if [ -d "${PWD}/conda-env" ]; then
 fi
 
 echo "Make networks"
- %(command)s %(args)s
+CNNECTOME_PATH="$PWD/../CNNectome"
+export PYTHONPATH="$CNNECTOME_PATH:$CNNECTOME_PATH/networks:$PYTHONPATH"
+%(command)s %(args)s
 '''
 
 _training_template_no_docker = r'''#!/usr/bin/env sh
