@@ -108,7 +108,7 @@ def create_experiment(
     except OSError as e:
         if overwrite:
             shutil.rmtree(path)
-            return create_experiment(path=path, data_pattern=data_pattern, symlink_data=symlink_data, overwrite=overwrite)
+            return create_experiment(path=path, data_pattern=data_pattern, symlink_data=symlink_data, overwrite=overwrite, create_conda_env=create_conda_env)
         else:
             raise e
 
