@@ -48,9 +48,42 @@ nvidia-docker run --rm \
     /bin/bash -c "export CUDA_VISIBLE_DEVICES=$1; %(command)s %(args)s 2>&1 | tee -a logfile"
 '''
 
+_architecture_template_no_docker = r'''#!/usr/bin/env sh
+if [ -d "${PWD}/conda-env" ]; then
+    echo 'activating conda'
+    . $HOME/miniconda3/etc/profile.d/conda.sh
+    conda activate "${PWD}/conda-env"
+    # conda command not exported to subshell
+    # https://github.com/conda/conda/issues/7753
+fi
+
+echo "Make networks"
+ %(command)s %(args)s
+'''
+
+_training_template_no_docker = r'''#!/usr/bin/env sh
+if [ -d "${PWD}/conda-env" ]; then
+    echo 'activating conda'
+    . $HOME/miniconda3/etc/profile.d/conda.sh
+    conda activate "${PWD}/conda-env"
+    # conda command not exported to subshell
+    # https://github.com/conda/conda/issues/7753
+fi
+
+export CUDA_VISIBLE_DEVICES=$1;
+echo "Start training with GPU ${CUDA_VISIBLE_DEVICES}"
+%(command)s %(args)s 2>&1| tee -a logfile
+'''
+
 
 def make_architecture(container, command, args):
     return _architecture_template % (dict(container=container, command=command, args=args))
 
 def make_training(container, command, args):
     return _training_template % (dict(container=container, command=command, args=args))
+
+def make_architecture_no_docker(command, args):
+    return _architecture_template_no_docker % (dict(command=command, args=args))
+
+def make_training_no_docker(command, args):
+    return _training_template_no_docker % (dict(command=command, args=args))
