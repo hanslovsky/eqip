@@ -10,7 +10,7 @@ from .version import __tag__, __version__
 # add gcc as dependency (gxx_linux-64):
 # https://github.com/Anaconda-Platform/anaconda-project/issues/183#issuecomment-462796564
 # if there is a better dependency than gxx_linux-64 (to make it independent of system), please let me know!
-_job_template=r'''#!/usr/bin/env sh
+_job_template=r'''#!/usr/bin/env bash
 
 set -e
 
@@ -43,7 +43,7 @@ pip install git+https://github.com/funkelab/daisy@%(daisy_revision)s
 pip install git+https://github.com/hanslovsky/eqip@%(eqip_revision)s
 '''
 
-_clone_environment_job_template=r'''#!/usr/bin/env sh
+_clone_environment_job_template=r'''#!/usr/bin/env bash
 
 set -e
 
