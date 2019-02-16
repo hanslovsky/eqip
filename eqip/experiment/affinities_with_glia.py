@@ -60,7 +60,7 @@ def _create_setup(experiment_dir):
     parser.add_argument('--malis-iterations', required=True, type=lambda arg: bounded_integer(arg, lower=0))
     parser.add_argument('--data-provider', required=False, default=os.path.join(experiment_dir, 'data/*'))
     parser.add_argument('--log-level', default='INFO', choices=('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'))
-    parser.add_argument('--additional-pip-packages', nargs='+')
+    parser.add_argument('--additional-pip-packages', nargs='+', default=())
 
     args, unknown = parser.parse_known_args()
     logging.basicConfig(level=logging.getLevelName(args.log_level))
