@@ -35,7 +35,7 @@ conda create \
       pip \
       tensorflow-gpu=1.3
 conda activate %(name)s
-pip install malis==1.0
+pip install git+https://github.com/TuragaLab/malis@beb4ee965acee89ab00a20a70205f51177003c69
 pip install git+https://github.com/funkey/augment@%(augment_revision)s
 pip install git+https://github.com/funkey/gunpowder@%(gunpowder_revision)s
 pip install git+https://github.com/hanslovsky/gunpowder-nodes@%(gunpowder_nodes_revision)s
