@@ -66,11 +66,14 @@ def _create_setup(experiment_dir):
     args, unknown = parser.parse_known_args()
     logging.basicConfig(level=logging.getLevelName(args.log_level))
 
-    clone_eqip_environment(
-        os.path.join(setup_dir, 'conda-env'),
-        os.path.join(experiment_dir, 'conda-env'),
-        use_name_as_prefix=True,
-        extra_pip_installs=args.additional_pip_packages)
+    if len(args.additional_pip_packages) == 0:
+        os.symlink(os.path.join(os.pardir, 'conda-env'), os.path.join(setup_dir, 'conda-env'))
+    else:
+        clone_eqip_environment(
+            os.path.join(setup_dir, 'conda-env'),
+            os.path.join(experiment_dir, 'conda-env'),
+            use_name_as_prefix=True,
+            extra_pip_installs=args.additional_pip_packages)
 
     num_affinities = sum(len(n) for n in (
         args.affinity_neighborhood_x,
