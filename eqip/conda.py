@@ -87,7 +87,8 @@ def create_eqip_environment(
         daisy_revision           = daisy_revision)
 
     _logger.debug('conda env create script: %s', script)
-    p = subprocess.Popen(script, shell=True)
+    # TODO find a way to do this without shell=True
+    p = subprocess.Popen(script, shell=True, executable='/bin/bash')
     stdout, stderr = p.communicate()
     # _logger.debug('stdout: %s', stdout)
     # _logger.debug('stderr: %s', stderr)
@@ -108,7 +109,8 @@ def clone_eqip_environment(
         script += '\npip install %s' % epi
 
     _logger.debug('conda env clone script: %s', script)
-    p = subprocess.Popen(script, shell=True)
+    # TODO find a way to do this without shell=True
+    p = subprocess.Popen(script, shell=True, executable='/bin/bash')
     stdout, stderr = p.communicate()
     # _logger.debug('stdout: %s', stdout)
     # _logger.debug('stderr: %s', stderr)
