@@ -48,7 +48,7 @@ nvidia-docker run --rm \
     /bin/bash -c "export CUDA_VISIBLE_DEVICES=$1; %(command)s %(args)s 2>&1 | tee -a logfile"
 '''
 
-_architecture_template_no_docker = r'''#!/usr/bin/env sh
+_architecture_template_no_docker = r'''#!/usr/bin/env bash
 if [ -d "${PWD}/conda-env" ]; then
     echo 'activating conda'
     . $HOME/miniconda3/etc/profile.d/conda.sh
@@ -63,7 +63,7 @@ export PYTHONPATH="$CNNECTOME_PATH:$CNNECTOME_PATH/networks:$PYTHONPATH"
 %(command)s %(args)s
 '''
 
-_training_template_no_docker = r'''#!/usr/bin/env sh
+_training_template_no_docker = r'''#!/usr/bin/env bash
 if [ -d "${PWD}/conda-env" ]; then
     echo 'activating conda'
     . $HOME/miniconda3/etc/profile.d/conda.sh
