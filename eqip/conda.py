@@ -21,19 +21,10 @@ conda create \
       --%(name_or_prefix)s=%(name)s \
       -c conda-forge \
       -y \
-      python=3.6 \
-      h5py \
-      z5py \
-      scikit-image \
-      numpy \
-      scipy \
-      requests \
-      urllib3 \
-      gxx_linux-64 \
-      cython \
-      pip \
-      tensorflow-gpu=1.3
+      python=3.6
 conda activate %(name)s
+pip install h5py scikit-image numpy scipy requests urllib3
+conda install -c conda-forge -y z5py gxx_linux-64 cython tensorflow-gpu=1.3
 pip install git+https://github.com/hanslovsky/eqip@%(eqip_revision)s
 '''
 
