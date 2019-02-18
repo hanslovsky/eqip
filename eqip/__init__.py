@@ -2,9 +2,7 @@ from __future__ import absolute_import, print_function
 
 from .experiment_utils import list_latest_checkpoint, list_latest_snapshot
 
-def version():
-    from .version import __version__
-    return __version__
+from .version_info import _version as version
 
 
 
@@ -74,7 +72,7 @@ nvidia-docker run --rm \
     mknet_args        = argv[indices[0]+1:indices[1]]
     train_args        = argv[indices[1]+1:]
 
-    eqip_version = version()
+    # eqip_version = version()
 
     parser = argparse.ArgumentParser()
     parser.add_argument('experiment')
@@ -85,10 +83,10 @@ nvidia-docker run --rm \
     parser.add_argument('--train-script-name', default='train.sh')
 
 
-    if 'dev' in eqip_version:
+    if version.tag() != '':
         parser.add_argument('--container', type=str, required=True)
     else:
-        parser.add_argument('--container', type=str, default='hanslovsky/eqip:%s' % eqip_version)
+        parser.add_argument('--container', type=str, default='hanslovsky/eqip:%s' % version)
 
     args = parser.parse_args(create_setup_args)
 

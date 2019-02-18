@@ -3,7 +3,7 @@ from setuptools import setup
 
 
 install_requires = [
-    'gunpowder',
+    'pip>=18.1',
     'scikit-image>=0.14.1',
     'numpy>=1.15.4',
     'scipy>=1.1.0',
@@ -39,11 +39,12 @@ packages = [
 
 here = os.path.abspath(os.path.dirname(__file__))
 version = {}
-with open(os.path.join(here, 'eqip', 'version.py')) as fp:
+with open(os.path.join(here, 'eqip', 'version_info.py')) as fp:
     exec(fp.read(), version)
 
 setup(
     name='eqip',
+    python_requires='>=3.6',
     version=version['__version__'],
     author='Philipp Hanslovsky',
     author_email='hanslovskyp@janelia.hhmi.org',
