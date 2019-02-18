@@ -8,7 +8,7 @@ import itertools
 
 logging.basicConfig(level=logging.INFO)
 
-from gpn import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment
+from fuse import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment
 from gunpowder import ArrayKey, Hdf5Source, Coordinate, BatchRequest, Normalize, Pad, RandomLocation, Reject, \
     ArraySpec, IntensityAugment, RandomProvider, GrowBoundary, IntensityScaleShift, \
     PrintProfilingStats, build, PreCache

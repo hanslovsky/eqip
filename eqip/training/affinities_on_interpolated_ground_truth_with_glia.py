@@ -6,12 +6,12 @@ from .. import tf_util
 
 import logging
 
-from gpn.map_numpy_array import MapNumpyArray
+from fuse.map_numpy_array import MapNumpyArray
 
 logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
 
-from gpn import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment
+from fuse import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment
 from gunpowder import Hdf5Source, Coordinate, BatchRequest, Normalize, Pad, RandomLocation, Reject, \
     ArraySpec, IntensityAugment, RandomProvider, GrowBoundary, IntensityScaleShift, \
     PrintProfilingStats, build, PreCache

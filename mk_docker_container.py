@@ -19,7 +19,7 @@ args = parser.parse_args()
 here = os.path.abspath(os.path.dirname(__file__))
 os.chdir(here)
 version = {}
-with open(os.path.join(here, 'eqip', 'version.py')) as fp:
+with open(os.path.join(here, 'eqip', 'version_info.py')) as fp:
     exec(fp.read(), version)
 
 def get_appropriate_version(version, revision):

@@ -155,9 +155,6 @@ def get_parser():
     parser.add_argument('--copy-data', action='store_true')
     parser.add_argument('--overwrite', action='store_true')
     parser.add_argument('--conda-sh', default='$HOME/miniconda3/etc/profile.d/conda.sh')
-    parser.add_argument('--augment-revision', default=default_revisions['augment'])
-    parser.add_argument('--gunpowder-revision', default=default_revisions['gunpowder'])
-    parser.add_argument('--gunpowder-nodes-revision', default=default_revisions['gunpowder-nodes'])
     parser.add_argument('--eqip-revision', default=default_revisions['eqip'])
     parser.add_argument('--log-level', default='INFO', choices=('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'))
     return parser
@@ -174,9 +171,6 @@ def create_experiment_main(argv=sys.argv[1:]):
             create_conda_env=lambda path: create_eqip_environment(
                 name=path,
                 use_name_as_prefix=True,
-                augment_revision=args.augment_revision,
-                gunpowder_nodes_revision=args.gunpowder_nodes_revision,
-                gunpowder_revision=args.gunpowder_revision,
                 eqip_revision=args.eqip_revision),
             symlink_data=not args.copy_data,
             overwrite=args.overwrite)

@@ -6,7 +6,7 @@ import itertools
 
 from gunpowder import ArrayKey, ArraySpec, Hdf5Source
 
-from gpn import Z5Source
+from fuse import Z5Source
 
 
 

@@ -40,7 +40,7 @@ def _default_pipeline_factory(
         from gunpowder.coordinate import Coordinate
         from gunpowder.compat import ensure_str
 
-        from gpn import Z5Source, Z5Write
+        from fuse import Z5Source, Z5Write
 
         _RAW = ArrayKey('RAW')
         _AFFS = ArrayKey('AFFS')

@@ -3,8 +3,7 @@ _logger = logging.getLogger(__name__)
 
 import subprocess
 
-from .version import __tag__, __version__
-
+from .version_info import _version as version
 # git clone https://github.com/saalfeldlab/CNNectome
 # somehow cython does not depend on conda's gcc, will have to explicitly
 # add gcc as dependency (gxx_linux-64):
@@ -35,11 +34,6 @@ conda create \
       pip \
       tensorflow-gpu=1.3
 conda activate %(name)s
-pip install git+https://github.com/TuragaLab/malis@beb4ee965acee89ab00a20a70205f51177003c69
-pip install git+https://github.com/funkey/augment@%(augment_revision)s
-pip install git+https://github.com/funkey/gunpowder@%(gunpowder_revision)s
-pip install git+https://github.com/hanslovsky/gunpowder-nodes@%(gunpowder_nodes_revision)s
-pip install git+https://github.com/funkelab/daisy@%(daisy_revision)s
 pip install git+https://github.com/hanslovsky/eqip@%(eqip_revision)s
 '''
 
@@ -59,32 +53,19 @@ conda create \
 conda activate %(name)s
 '''
 
-default_revisions = {
-        'augment'        : '4a42b01ccad7607b47a1096e904220729dbcb80a',
-        'gunpowder'      : 'd49573f53e8f23d12461ed8de831d0103acb2715',
-        'gunpowder-nodes': '2d94463ae5a4fbcc0063aaeeb8210a516e0b65aa',
-        'daisy'          : '41130e58582ae05d01d26261786de0cbafaa6482',
-        'eqip'           : __version__ if __tag__ == '' else 'master'}
+default_revisions = {'eqip' : version.version() if version.tag() == '' else 'master'}
 
 def create_eqip_environment(
         name,
         use_name_as_prefix=False,
         conda_sh = '$HOME/miniconda3/etc/profile.d/conda.sh',
-        augment_revision=default_revisions['augment'],
-        gunpowder_revision=default_revisions['gunpowder'],
-        gunpowder_nodes_revision=default_revisions['gunpowder-nodes'],
-        eqip_revision=default_revisions['eqip'],
-        daisy_revision=default_revisions['daisy']):
+        eqip_revision=default_revisions['eqip']):
 
     script = _job_template % dict(
-        conda_sh                 = conda_sh,
-        name_or_prefix           = 'prefix' if use_name_as_prefix else 'name',
-        name                     = name,
-        augment_revision         = augment_revision,
-        gunpowder_revision       = gunpowder_revision,
-        gunpowder_nodes_revision = gunpowder_nodes_revision,
-        eqip_revision            = eqip_revision,
-        daisy_revision           = daisy_revision)
+        conda_sh       = conda_sh,
+        name_or_prefix = 'prefix' if use_name_as_prefix else 'name',
+        name           = name,
+        eqip_revision  = eqip_revision)
 
     _logger.debug('conda env create script: %s', script)
     # TODO find a way to do this without shell=True
