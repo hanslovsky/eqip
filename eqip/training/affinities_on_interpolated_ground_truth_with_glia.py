@@ -6,7 +6,6 @@ from .. import tf_util
 
 import logging
 
-from gpn import Log
 from gpn.map_numpy_array import MapNumpyArray
 
 logging.basicConfig(level=logging.INFO)
@@ -192,9 +191,9 @@ def train_until(
             subsample=8
         )
 
-    train_pipeline += Log.log_numpy_array_stats_after_process(GT_MASK_KEY, 'min', 'max', 'dtype', logging_prefix='%s: before misalign: ' % GT_MASK_KEY)
+    # train_pipeline += Log.log_numpy_array_stats_after_process(GT_MASK_KEY, 'min', 'max', 'dtype', logging_prefix='%s: before misalign: ' % GT_MASK_KEY)
     train_pipeline += Misalign(z_resolution=360, prob_slip=0.05, prob_shift=0.05, max_misalign=(360,) * 2, ignore_keys_for_slip=ignore_keys_for_slip)
-    train_pipeline += Log.log_numpy_array_stats_after_process(GT_MASK_KEY, 'min', 'max', 'dtype', logging_prefix='%s: after  misalign: ' % GT_MASK_KEY)
+    # train_pipeline += Log.log_numpy_array_stats_after_process(GT_MASK_KEY, 'min', 'max', 'dtype', logging_prefix='%s: after  misalign: ' % GT_MASK_KEY)
 
     train_pipeline += SimpleAugment(transpose_only=[1,2])
     train_pipeline += IntensityAugment(RAW_KEY, 0.9, 1.1, -0.1, 0.1, z_section_wise=True)
@@ -296,11 +295,10 @@ def train(argv=sys.argv[1:]):
         return val
 
     def make_default_data_provider_string():
-        data_dir = '/groups/saalfeld/home/hanslovskyp/data/from-arlo/interpolated-combined'
-        file_pattern = 'sample_*.h5'
-        return '{}/{}:{}={}:{}={}:{}={}:{}={}:{}={}'.format(
-            data_dir,
-            file_pattern,
+        data_dir = os.path.join(os.pardir, 'data')
+        file_pattern = '*'
+        return '{}:{}={}:{}={}:{}={}:{}={}:{}={}'.format(
+            os.path.join(data_dir, file_pattern),
             'RAW',               gunpowder_utils.DEFAULT_PATHS['raw'],
             'NEURON_IDS_NOGLIA', gunpowder_utils.DEFAULT_PATHS['neuron_ids_noglia'],
             'MASK',              'volumes/labels/mask-downsampled',
