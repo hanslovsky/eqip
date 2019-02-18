@@ -25,6 +25,7 @@ class _Network(object):
         self.gt_glia_name             = None
         self.merged_name              = None
         self.affinities_cropped_name  = None
+        self.glia_cropped_name        = None
         self.created_network          = False
 
     def mk_net(self, input_shape, meta_graph_filename):
@@ -119,6 +120,7 @@ class _Network(object):
         self.glia_loss_name           = glia_mse_loss.name
         self.merged_name              = merged.name
         self.affinities_cropped_name  = affinities_cropped.name
+        self.glia_cropped_name        = glia_cropped.name
         self.created_network          = True
 
         tf.train.export_meta_graph(filename=meta_graph_filename)
@@ -138,6 +140,7 @@ class _Network(object):
             io_keys.GLIA_MASK                                  : self.glia_mask_name,
             io_keys.SUMMARY                                    : self.merged_name,
             io_keys.AFFINITIES_CROPPED                         : self.affinities_cropped_name,
+            io_keys.GLIA_CROPPED_NAME                          : self.glia_cropped_name,
             io_keys.glia_loss_name("mse")                      : self.glia_loss_name
         }
 

@@ -14,6 +14,7 @@ GLIA_LOSS          = 'glia_loss'
 GLIA               = 'glia'
 GT_GLIA            = 'gt_glia'
 GLIA_LOSS_NAME     = 'glia_loss'
+GLIA_CROPPED_NAME  = 'glia_cropped'
 
 def glia_loss_name(loss_type):
     return '%s_%s' % (GLIA_LOSS_NAME, loss_type)
