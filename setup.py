@@ -30,27 +30,35 @@ console_scripts = [
 
 entry_points = dict(console_scripts=console_scripts)
 
+name = 'eqip'
+
 packages = [
-    'eqip',
-    'eqip.architectures',
-    'eqip.training',
-    'eqip.inference',
-    'eqip.experiment'
+    f'{name}',
+    f'{name}.architectures',
+    f'{name}.training',
+    f'{name}.inference',
+    f'{name}.experiment'
 ]
 
 here = os.path.abspath(os.path.dirname(__file__))
-version = {}
-with open(os.path.join(here, 'eqip', 'version_info.py')) as fp:
-    exec(fp.read(), version)
+version_info = {}
+with open(os.path.join(here, name, 'version_info.py')) as fp:
+    exec(fp.read(), version_info)
+version = version_info['_version']
+
+with open(os.path.join(here, 'README.md')) as f:
+    eqip_long_description = f.read()
 
 setup(
-    name='eqip',
+    name=name,
     python_requires='>=3.6',
-    version=version['__version__'],
+    version=version.version(),
     author='Philipp Hanslovsky',
     author_email='hanslovskyp@janelia.hhmi.org',
-    description='',
-    url='https://github.com/hanslovsky/eqip',
+    description='EM Quasi-Isotropic Prediction',
+    long_description=eqip_long_description,
+    long_description_content_type='text/markdown',
+    url=f'https://github.com/hanslovsky/{name}',
     install_requires=install_requires,
     entry_points=entry_points,
     packages=packages
