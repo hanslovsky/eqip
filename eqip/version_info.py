@@ -2,8 +2,8 @@ import sys
 
 __major__   = 0
 __minor__   = 4
-__patch__   = 4
-__tag__     = ''
+__patch__   = 5
+__tag__     = 'dev'
 __version__ = f'{__major__}.{__minor__}.{__patch__}.{__tag__}'.strip('.')
 
 class _Version(object):
