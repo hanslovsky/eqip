@@ -20,11 +20,13 @@ pip install git+https://github.com/hanslovsky/eqip
 # High Memory Usage/Unexpectedly Many Threads/Processes
 
 [Set environment, as needed](https://stackoverflow.com/a/53224849/1725687):
- - `OMP_NUM_THREADS=1`, and/or
- - `MKL_NUM_THREADS=1`, and/or
- - `OPENBLAS_NUM_THREADS=1`, and/or
- - `VECLIB_MAXIMUM_THREADS=1`, and/or
- - `NUMEXPR_NUM_THREADS=1`
+```sh
+ export OMP_NUM_THREADS=1
+ export MKL_NUM_THREADS=1
+ export OPENBLAS_NUM_THREADS=1
+ export VECLIB_MAXIMUM_THREADS=1
+ export NUMEXPR_NUM_THREADS=1
+ ```
  
  [numpy/nump#11826](https://github.com/numpy/numpy/issues/11826)
  
