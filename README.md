@@ -16,3 +16,12 @@ conda install -c conda-forge pymongo
 pip install malis==1.0
 pip install git+https://github.com/hanslovsky/eqip
 ```
+
+# High Memory Usage/Unexpectedly Many Threads/Processes
+
+Set environment, as needed:
+ - `OMP_NUM_THREADS=1, and/or
+ - `MKL_NUM_THREADS=1`
+ 
+ [numpy/nump#11826](https://github.com/numpy/numpy/issues/11826)
+ 
