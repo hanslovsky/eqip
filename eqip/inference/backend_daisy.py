@@ -204,11 +204,15 @@ def _predict_affinities_daisy():
     _logger.info('output network size world:  %s', network_output_shape_world)
 
 
+    weight_graph = os.path.join(experiment_directory, args.weight_graph_pattern % iteration)
+    meta_graph = os.path.join(experiment_directory, args.meta_graph_filename)
+
+
     if not os.path.isdir(str(output_container)):
         os.makedirs(str(output_container))
     with z5py.File(str(output_container), use_zarr_format=False) as f:
 
-        for output_dataset, dtype, num_channels, _ in outputs:
+        for output_dataset, dtype, num_channels, tensor in outputs:
 
             ds = f.require_dataset(
                 name=output_dataset,
@@ -218,6 +222,12 @@ def _predict_affinities_daisy():
                 compression='raw')
             ds.attrs['resolution'] = tuple(args.output_voxel_size[::-1])
             ds.attrs['offset'] = tuple(output_dataset_roi_world.get_begin()[::-1])
+            workflow_info = {
+                'input'  : {'container': input_container, 'dataset': inputs[0][0], 'tensor': inputs[0][1]},
+                'output' : {'tensor': tensor},
+                'network': {'experiment_directory': experiment_directory, 'weight_graph': weight_graph, 'meta_graph': meta_graph, 'iteration': iteration}
+            }
+            ds.attrs['workflow_info'] = workflow_info
 
     gpus = args.gpus
     num_workers = len(gpus)
@@ -229,8 +239,8 @@ def _predict_affinities_daisy():
         output_dir=str(output_dir),
         outputs=tuple((ds, tensor) for ds, _, _, tensor in outputs),
         output_compression_type=args.output_compression,
-        weight_graph=os.path.join(experiment_directory, args.weight_graph_pattern % iteration),
-        meta_graph=os.path.join(experiment_directory, args.meta_graph_filename),
+        weight_graph=weight_graph,
+        meta_graph=meta_graph,
         input_voxel_size=input_voxel_size,
         output_voxel_size=output_voxel_size)
 
