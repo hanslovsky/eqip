@@ -76,14 +76,15 @@ def make_process_function(
         pipeline_factory,
         input_voxel_size,
         output_voxel_size,
-        outputs):
+        outputs,
+        num_cpu_workers):
     def process_function():
         scheduler = Client()
         worker_id = scheduler.context.worker_id
         num_workers = scheduler.context.num_workers
         gpu = actor_id_to_gpu_mapping(worker_id)
         os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
-        _logger.info("Worker %d uses gpu %d", worker_id, gpu)
+        _logger.info("Worker %d uses gpu %d with %d workers", worker_id, gpu, num_workers)
 
         _logger.info("Environment:")
         for name in os.environ.keys():
@@ -103,32 +104,22 @@ def make_process_function(
 
         import tensorflow as tf
         with tf.device('/gpu:%d' % 0):
-            from gunpowder import ArrayKey, ArraySpec, build, BatchRequest
-            from gunpowder import Roi as gRoi
-            from gunpowder import Coordinate as gCoordinate
+            from gunpowder import ArrayKey, ArraySpec, build, BatchRequest, DaisyRequestBlocks
             _RAW = ArrayKey('RAW')
 
-            num_predicted_blocks = 0
-            pipeline = pipeline_factory()
-            with build(pipeline):
-                while True:
-                    block = scheduler.acquire_block()
-                    if block is None:
-                        break
+            roi_map = {ArrayKey('OUTPUT_%d' % i): 'write_roi' for i in range(len(outputs))}
+            roi_map[_RAW] = 'read_roi'
 
-                    request = BatchRequest()
-                    request[_RAW] = ArraySpec(
-                        roi=gRoi(offset=block.read_roi.get_begin(), shape=block.read_roi.get_shape()),
-                        voxel_size=gCoordinate(input_voxel_size))
-                    for i in range(len(outputs)):
-                        request[ArrayKey('OUTPUT_%d' % i)] = ArraySpec(
-                            roi=gRoi(offset=block.write_roi.get_begin(), shape=block.write_roi.get_shape()),
-                            voxel_size=gCoordinate(output_voxel_size))
-                    _logger.info('Requesting %s', request)
-                    pipeline.request_batch(request)
-                    scheduler.release_block(block, 0)
-                    num_predicted_blocks += 1
-                    _logger.info("Worker %d predicted %d blocks", worker_id, num_predicted_blocks)
+            reference = BatchRequest()
+            reference[_RAW] = ArraySpec(roi=None, voxel_size=input_voxel_size)
+            for i in range(len(outputs)):
+                reference[ArrayKey('OUTPUT_%d' % i)] = ArraySpec(roi=None, voxel_size=output_voxel_size)
+
+            pipeline = pipeline_factory()
+            pipeline += DaisyRequestBlocks(reference=reference, roi_map=roi_map, num_workers=num_cpu_workers)
+            with build(pipeline):
+                pipeline.request_batch(BatchRequest())
+
 
     return process_function
 
@@ -153,6 +144,7 @@ def _predict_affinities_daisy():
     parser.add_argument('--output', type=str, action='append', nargs=4, metavar=('dataset', 'dtype', 'num_channels', 'tensor'), help='For example --output volumes/affinities/prediction float32 3 Slice:0. num-channels<=0 means no channel axis', required=True)
     # parser.add_argument('--output-dataset', type=str)
     parser.add_argument('--gpus', required=True, type=int, nargs='+')
+    parser.add_argument('--num-workers', type=int, default=1, help='Number of CPU workers per GPU for parallel processing')
     parser.add_argument('--input-voxel-size', nargs=3, type=int, default=(360, 36, 36), help='zyx')
     parser.add_argument('--output-voxel-size', nargs=3, type=int, default=(120, 108, 108), help='zyx')
     parser.add_argument('--network-input-shape', nargs=3, type=int, default=(91, 862, 862), help='zyx')
@@ -247,7 +239,8 @@ def _predict_affinities_daisy():
         pipeline_factory=pipeline_factory,
         input_voxel_size=input_voxel_size,
         output_voxel_size=output_voxel_size,
-        outputs=tuple((ds, tensor) for ds, _, _, tensor in outputs))
+        outputs=tuple((ds, tensor) for ds, _, _, tensor in outputs),
+        num_cpu_workers=args.num_workers)
 
     total_roi = output_dataset_roi_world.grow(amount_neg=tuple(shape_diff_world / 2), amount_pos=tuple(shape_diff_world / 2))
     read_roi  = Roi(shape=tuple(network_input_shape_world), offset=tuple(-shape_diff_world / 2))
