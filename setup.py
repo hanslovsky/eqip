@@ -35,6 +35,8 @@ name = 'eqip'
 packages = [
     f'{name}',
     f'{name}.architectures',
+    f'{name}.architectures.CNNectome',
+    f'{name}.architectures.CNNectome.networks',
     f'{name}.training',
     f'{name}.inference',
     f'{name}.experiment'

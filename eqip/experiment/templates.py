@@ -58,8 +58,6 @@ if [ -d "${PWD}/conda-env" ]; then
 fi
 
 echo "Make networks"
-CNNECTOME_PATH="$PWD/../CNNectome"
-export PYTHONPATH="$CNNECTOME_PATH:$CNNECTOME_PATH/networks:$PYTHONPATH"
 %(command)s %(args)s
 '''
 

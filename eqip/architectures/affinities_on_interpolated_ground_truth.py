@@ -1,7 +1,7 @@
-import networks.ops3d as ops3d
-import networks.unet as unet
 import tensorflow as tf
 import json
+
+from .CNNectome.networks import ops3d, unet
 
 from .. import io_keys
 

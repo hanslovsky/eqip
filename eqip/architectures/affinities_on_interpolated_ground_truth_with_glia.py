@@ -1,9 +1,9 @@
 import json
 import logging
-import networks.ops3d as ops3d
-import networks.unet as unet
 import sys
 import tensorflow as tf
+
+from .CNNectome.networks import ops3d, unet
 
 from .. import io_keys
 from .. import tf_util

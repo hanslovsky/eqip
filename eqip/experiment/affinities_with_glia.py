@@ -138,16 +138,6 @@ def create_experiment(
             else:
                 shutil.copy(fn, target_name)
 
-    def git_clone(url, target, commit):
-        p = subprocess.Popen(['git', 'clone', url, target])
-        p.communicate()
-        os.chdir(target)
-        p = subprocess.Popen(['git', 'checkout', commit])
-        p.communicate()
-
-    git_clone('https://github.com/saalfeldlab/CNNectome', os.path.join(path, 'CNNectome'), '0c2220d36423497fdfc68d07beb64e70010e5a75')
-
-
 def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('path')
