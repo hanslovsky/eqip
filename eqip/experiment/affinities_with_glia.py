@@ -5,7 +5,6 @@ import math
 import os
 import shutil
 import stat
-import subprocess
 import sys
 
 from ..conda import clone_eqip_environment, create_eqip_environment, default_revisions
@@ -19,6 +18,71 @@ from eqip.experiment.affinities_with_glia import _create_setup
 here = os.path.abspath(os.path.dirname(__file__))
 _create_setup(experiment_dir=here)
 """
+
+_PREDICTION_SCRIPT=r'''#!/usr/bin/env bash
+set -e
+
+THIS_DIR=$(dirname $0)
+
+function _exit_with_error() {
+    echo "$1" >&2
+    exit "${2:-1}"
+}
+
+function _exit_no_argparse() {
+    _exit_with_error \
+        "Get argparse.bash from https://github.com/nhoffman/argparse-bash" \
+        1
+}
+
+function _get_and_source_argparse() {
+    echo "Downloading argparse.bash..."
+    O_FILE=${1:-argparse.bash}
+    wget https://raw.githubusercontent.com/nhoffman/argparse-bash/master/argparse.bash -O $O_FILE 2>/dev/null
+    chmod +x $O_FILE
+    source $O_FILE
+}
+
+ARGPARSE_DESCRIPTION="Predict. See also predict-daisy --help"
+ARGPARSE_BASH=$THIS_DIR/argparse.bash
+NAME=$(head -n1 $THIS_DIR/name 2>/dev/null || echo '')
+source $ARGPARSE_BASH 2>/dev/null || _get_and_source_argparse $ARGPARSE_BASH || _exit_no_argparse
+argparse "$@" <<EOF || exit 1
+
+parser.add_argument('--input-container', required=True)
+parser.add_argument('--input', required=True)
+parser.add_argument('--output-container', required=True)
+parser.add_argument('--gpus', required=True, help='comma-separated list of gpus')
+parser.add_argument('--num-channels', required=True, type=int)
+parser.add_argument('--num-workers', required=False, type=int, default=1)
+parser.add_argument('--prediction-prefix', required=False, help='Defaults to volumes/predictions/<NAME>/<SETUP>/<ITERATION>')
+parser.add_argument('--setup', required=True, type=int)
+parser.add_argument('--iteration', required=False, type=int, help='Will default to latest checkpoint if not specified')
+parser.add_argument('--name', required=False, help='Defaults to contents of ${THIS_DIR}/name', default='$NAME')
+parser.add_argument('--conda-sh', required=False, default='$HOME/miniconda3/etc/profile.d/conda.sh')
+parser.add_argument('--conda-environment', required=False, default='${THIS_DIR}/conda-env')
+EOF
+
+[ -n "$NAME" ] || _exit_with_error "No name specified or found in ${THIS_DIR}/name" 1
+
+
+source $(realpath $CONDA_SH)
+conda activate $(realpath $CONDA_ENVIRONMENT)
+
+ITERATION=${ITERATION:-$(head -n1 ${THIS_DIR}/${SETUP}/checkpoint | sed -r 's/^.*unet_checkpoint_([0-9]+).*/\1/')}
+PREDICTION_PREFIX=${PREDICTION_PREFIX:-volumes/predictions/$NAME/$SETUP/$ITERATION}
+
+predict-daisy \
+    --input-container=$INPUT_CONTAINER \
+    --input $INPUT Placeholder:0 \
+    --output-container=$OUTPUT_CONTAINER \
+    --gpus $(echo $GPUS | tr ',' ' ') \
+    --output ${PREDICTION_PREFIX}/affinities float32 ${NUM_CHANNELS} Slice:0 \
+    --output ${PREDICTION_PREFIX}/glia       float32 0               Slice_1:0 \
+    --experiment-directory=${THIS_DIR}/${SETUP} \
+    --iteration=$ITERATION \
+    --num-workers=${NUM_WORKERS}
+'''
 
 def _create_setup(experiment_dir):
 
@@ -103,6 +167,7 @@ def create_experiment(
         path,
         data_pattern,
         create_conda_env,
+        name=None,
         symlink_data=False,
         overwrite=False):
 
@@ -116,16 +181,25 @@ def create_experiment(
         else:
             raise e
 
+    name = os.path.basename(os.path.normpath(path)) if name is None else name
+
     data_dir      = os.path.join(path, 'data')
     conda_env_dir = os.path.join(path, 'conda-env')
     os.makedirs(data_dir, exist_ok=False)
     create_conda_env(conda_env_dir)
     with open(os.path.join(path, 'create-setup.py'), 'w') as f:
         f.write(_CREATE_SETUP_TEMPLATE)
-        os.chmod(os.path.join(path, 'create-setup.py'), stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP)
+    os.chmod(os.path.join(path, 'create-setup.py'), stat.S_IWUSR | stat.S_IRUSR | stat.S_IXUSR | stat.S_IRGRP)
 
     with open(os.path.join(path, 'data-source'), 'w') as f:
         f.write(data_pattern)
+
+    with open(os.path.join(path, 'name'), 'w') as f:
+        f.write(name)
+
+    with open(os.path.join(path, 'predict.sh'), 'w') as f:
+        f.write(_PREDICTION_SCRIPT)
+    os.chmod(os.path.join(path, 'predict.sh'), stat.S_IXUSR | stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
     for fn in glob.glob(data_pattern):
         base_name   = os.path.basename(fn)
@@ -141,6 +215,7 @@ def create_experiment(
 def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('path')
+    parser.add_argument('--experiment-name', required=False, help='Defaults to basename of PATH')
     parser.add_argument('--data-pattern', required=True)
     parser.add_argument('--copy-data', action='store_true')
     parser.add_argument('--overwrite', action='store_true')
@@ -163,7 +238,8 @@ def create_experiment_main(argv=sys.argv[1:]):
                 use_name_as_prefix=True,
                 eqip_revision=args.eqip_revision),
             symlink_data=not args.copy_data,
-            overwrite=args.overwrite)
+            overwrite=args.overwrite,
+            name=args.experiment_name)
     except Exception as e:
         print('Unable to create experiment:', str(e), file=sys.stderr)
         parser.print_help(sys.stderr)
