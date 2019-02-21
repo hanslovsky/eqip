@@ -11,7 +11,7 @@ install_requires = [
     'augment-nd',
     'gunpowder @ git+https://github.com/funkey/gunpowder@d49573f53e8f23d12461ed8de831d0103acb2715',
     'daisy @ git+https://github.com/funkelab/daisy@41130e58582ae05d01d26261786de0cbafaa6482',
-    'fuse @ git+https://github.com/hanslovsky/fuse@0.1.0'
+    'fuse @ git+https://github.com/hanslovsky/fuse@0.1.1'
 ]
 
 console_scripts = [
