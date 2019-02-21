@@ -144,6 +144,17 @@ def _create_setup(experiment_dir):
         args.affinity_neighborhood_y,
         args.affinity_neighborhood_z))
 
+    def as_vector(offset, dimension):
+        return tuple(offset if d == dimension else 0 for d in range(3))
+
+    offsets = tuple(as_vector(o, 2) for o in args.affinity_neighborhood_z) \
+            + tuple(as_vector(o, 1) for o in args.affinity_neighborhood_y) \
+            + tuple(as_vector(o, 0) for o in args.affinity_neighborhood_y)
+
+    with open(os.path.join(setup_dir, 'offsets'), 'w') as f:
+        f.write('\n'.join(('%d,%d,%d' % o) + (':%d' %i) for i, o in enumerate(offsets)))
+    os.chmod(os.path.join(setup_dir, 'offsets'), stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+
     with open(os.path.join(setup_dir, 'mknet.sh'), 'w') as f:
         f.write(make_architecture_no_docker(
             command='make-affinities-on-interpolated-ground-truth-with-glia',
