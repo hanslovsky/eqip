@@ -84,6 +84,91 @@ predict-daisy \
     --num-workers=${NUM_WORKERS}
 '''
 
+_AVERAGE_AFFINITIES_SCRIPT=r'''#!/usr/bin/env bash
+set -e
+
+THIS_DIR=$(dirname $0)
+
+function _exit_with_error() {
+    echo "$1" >&2
+    exit "${2:-1}"
+}
+
+function _exit_no_argparse() {
+    _exit_with_error \
+        "Get argparse.bash from https://github.com/nhoffman/argparse-bash" \
+        1
+}
+
+function _get_and_source_argparse() {
+    echo "Downloading argparse.bash..."
+    O_FILE=${1:-argparse.bash}
+    wget https://raw.githubusercontent.com/nhoffman/argparse-bash/master/argparse.bash -O $O_FILE 2>/dev/null
+    chmod +x $O_FILE
+    source $O_FILE
+}
+
+ARGPARSE_DESCRIPTION="Predict. See also predict-daisy --help"
+ARGPARSE_BASH=$THIS_DIR/argparse.bash
+NAME=$(head -n1 $THIS_DIR/name 2>/dev/null || echo '')
+source $ARGPARSE_BASH 2>/dev/null || _get_and_source_argparse $ARGPARSE_BASH || _exit_no_argparse
+argparse "$@" <<EOF || exit 1
+
+parser.add_argument('--container', required=True)
+parser.add_argument('--mask-container', required=True)
+parser.add_argument('--mask', required=True)
+parser.add_argument('--n-nodes', required=True, help='Number of spark nodes', type=int)
+parser.add_argument('--prefix', required=False, help='Defaults to volumes/predictions/<NAME>/<SETUP>/<ITERATION>')
+parser.add_argument('--setup', required=True, type=int)
+parser.add_argument('--iteration', required=False, type=int, help='Will default to latest checkpoint if not specified')
+parser.add_argument('--name', required=False, help='Defaults to contents of ${THIS_DIR}/name', default='$NAME')
+parser.add_argument('--glia-mask-threshold', required=False, type=float)
+parser.add_argument('--use-glia-mask', required=False, action='store_true')
+parser.add_argument('--jar', required=False, default='${HOME}/label-utilities-spark-0.7.1-shaded.jar')
+parser.add_argument('--flintstone', required=False, default='$HOME/flintstone/flintstone.sh')
+parser.add_argument('--block-size', required=False, default='64,64,64')
+parser.add_argument('--blocks-per-task', required=False, default='4,4,4')
+EOF
+
+[ -n "$NAME" ] || _exit_with_error "No name specified or found in ${THIS_DIR}/name" 1
+
+CLASS="org.janelia.saalfeldlab.label.spark.affinities.AverageAffinities"
+
+
+ITERATION=${ITERATION:-$(head -n1 ${THIS_DIR}/${SETUP}/checkpoint | sed -r 's/^.*unet_checkpoint_([0-9]+).*/\1/')}
+PREFIX=${PREFIX:-volumes/predictions/$NAME/$SETUP/$ITERATION}
+
+[ -f $FLINSTONE ] || _exit_with_error "Flintstone not found at $FLINTSTONE" 1
+[ -f "${THIS_DIR}/${SETUP}/offsets" ] || _exit_with_error "No offsets specified in ${THIS_DIR}/${SETUP}/offsets" 1
+
+CMD="$FLINTSTONE \
+    ${N_NODES} \
+    ${JAR} \
+    ${CLASS} \
+    $CONTAINER \
+    --affinity-dataset=$PREFIX/affinities \
+    --mask-container=$MASK_CONTAINER \
+    --mask-dataset=$MASK \
+    --block-size=$BLOCK_SIZE \
+    --blocks-per-task=$BLOCKS_PER_TASK"
+
+for OFFSET in $(cat "${THIS_DIR}/${SETUP}/offsets"); do
+    # echo $OFFSET
+    CMD="$CMD --offsets=$OFFSET"
+done
+
+
+if [ -n "$USE_GLIA_MASK" ]; then
+    CMD="$CMD --glia-mask-dataset=$PREFIX/glia"
+    if [ -n "$GLIA_MASK_THRESHOLD" ]; then
+        CMD="$CMD --glia-mask-threshold=$GLIA_MASK_THRESHOLD"
+    fi
+fi
+
+$CMD
+
+'''
+
 def _create_setup(experiment_dir):
 
     from .templates import make_architecture_no_docker, make_training_no_docker
@@ -211,6 +296,10 @@ def create_experiment(
     with open(os.path.join(path, 'predict.sh'), 'w') as f:
         f.write(_PREDICTION_SCRIPT)
     os.chmod(os.path.join(path, 'predict.sh'), stat.S_IXUSR | stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+
+    with open(os.path.join(path, 'average-affinities.sh'), 'w') as f:
+        f.write(_AVERAGE_AFFINITIES_SCRIPT)
+    os.chmod(os.path.join(path, 'average-affinities.sh'), stat.S_IXUSR | stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
     for fn in glob.glob(data_pattern):
         base_name   = os.path.basename(fn)
