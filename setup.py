@@ -7,6 +7,7 @@ install_requires = [
     'scikit-image>=0.14.1',
     'numpy>=1.15.4',
     'scipy>=1.1.0',
+    'malis-pre-release',
     'malis @ git+https://github.com/TuragaLab/malis@beb4ee965acee89ab00a20a70205f51177003c69',
     'augment @ git+https://github.com/funkey/augment',
     'augment-nd',
