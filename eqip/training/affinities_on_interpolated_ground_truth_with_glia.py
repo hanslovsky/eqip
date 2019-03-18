@@ -11,10 +11,10 @@ from fuse.map_numpy_array import MapNumpyArray
 logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
 
-from fuse import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment
+from fuse import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment, NewKeyFromNumpyArray
 from gunpowder import Hdf5Source, Coordinate, BatchRequest, Normalize, Pad, RandomLocation, Reject, \
     ArraySpec, IntensityAugment, RandomProvider, GrowBoundary, IntensityScaleShift, \
-    PrintProfilingStats, build, PreCache
+    PrintProfilingStats, build, PreCache, ArrayKey
 from gunpowder.contrib import \
     ZeroOutConstSections
 from gunpowder.nodes import \
@@ -42,6 +42,7 @@ GLIA_MASK_KEY        = gunpowder_utils.GLIA_MASK_KEY
 GLIA_KEY             = gunpowder_utils.GLIA_KEY
 GLIA_SCALE_KEY       = gunpowder_utils.GLIA_SCALE_KEY
 GT_GLIA_KEY          = gunpowder_utils.GT_GLIA_KEY
+UNLABELED_KEY        = ArrayKey("UNLABELED")
 
 NETWORK_INPUT_SHAPE  = Coordinate((43, 430, 430))
 NETWORK_OUTPUT_SHAPE = Coordinate((65,  70,  70))
@@ -84,7 +85,7 @@ def train_until(
         grow_boundaries,
         snapshot_dir):
 
-    ignore_keys_for_slip = (LABELS_KEY, GT_MASK_KEY, GT_GLIA_KEY, GLIA_MASK_KEY) if ignore_labels_for_slip else ()
+    ignore_keys_for_slip = (LABELS_KEY, GT_MASK_KEY, GT_GLIA_KEY, GLIA_MASK_KEY, UNLABELED_KEY) if ignore_labels_for_slip else ()
 
     defect_dir = '/groups/saalfeld/home/hanslovskyp/experiments/quasi-isotropic/data/defects'
     if tf.train.latest_checkpoint('.'):
@@ -117,6 +118,7 @@ def train_until(
     request.add(GLIA_MASK_KEY,       output_size, voxel_size=output_voxel_size)
     request.add(GLIA_KEY,            output_size, voxel_size=output_voxel_size)
     request.add(GT_GLIA_KEY,         output_size, voxel_size=output_voxel_size)
+    request.add(UNLABELED_KEY,       output_size, voxel_size=output_voxel_size)
     if balance_labels:
         request.add(AFFINITIES_SCALE_KEY, output_size, voxel_size=output_voxel_size)
     # always balance glia labels!
@@ -215,19 +217,27 @@ def train_until(
     if renumber_connected_components:
         train_pipeline += RenumberConnectedComponents(labels=LABELS_KEY)
 
+    train_pipeline += NewKeyFromNumpyArray(lambda array: 1 - array, GT_GLIA_KEY, UNLABELED_KEY)
 
+
+    # labels_mask: anything that connects into labels_mask will be zeroed out
+    # unlabelled: anyhing that points into unlabeled will have zero affinity;
+    #             affinities within unlabelled will be masked out
     train_pipeline += AddAffinities(
             affinity_neighborhood=affinity_neighborhood,
             labels=LABELS_KEY,
             labels_mask=GT_MASK_KEY,
             affinities=GT_AFFINITIES_KEY,
-            affinities_mask=AFFINITIES_MASK_KEY)
+            affinities_mask=AFFINITIES_MASK_KEY,
+            unlabelled=UNLABELED_KEY
+    )
 
     snapshot_datasets = {
         RAW_KEY: 'volumes/raw',
         LABELS_KEY: 'volumes/labels/neuron_ids',
         GT_AFFINITIES_KEY: 'volumes/affinities/gt',
         GT_GLIA_KEY: 'volumes/labels/glia_gt',
+        UNLABELED_KEY: 'volumes/labels/unlabeled',
         AFFINITIES_KEY: 'volumes/affinities/prediction',
         LOSS_GRADIENT_KEY: 'volumes/loss_gradient',
         AFFINITIES_MASK_KEY: 'masks/affinities',
