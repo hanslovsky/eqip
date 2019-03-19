@@ -280,7 +280,7 @@ def _create_setup(experiment_dir):
     parser.add_argument('--affinity-neighborhood-z', required=True, nargs='+', type=int)
     parser.add_argument('--mse-iterations', required=True, type=lambda arg: bounded_integer(arg, lower=0))
     parser.add_argument('--malis-iterations', required=True, type=lambda arg: bounded_integer(arg, lower=0))
-    parser.add_argument('--data-provider', required=False, default=os.path.join(experiment_dir, 'data/*'))
+    parser.add_argument('--data-provider', required=False, default=os.path.join(experiment_dir, 'data/*:MASK=volumes/labels/mask-downsampled-75%-y:GLIA_MASK=volumes/labels/mask-downsampled-75%-y'))
     parser.add_argument('--log-level', default='INFO', choices=('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'))
     parser.add_argument('--additional-pip-packages', nargs='+', default=())
 
