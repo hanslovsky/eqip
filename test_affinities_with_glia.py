@@ -32,7 +32,7 @@ eqip.architectures.affinities_on_interpolated_ground_truth_with_glia(argv=mknet_
 unet_meta = os.path.join(experiment_dir, 'unet')
 train_net_argv = (
     # '--help',
-    '--data-provider=/groups/saalfeld/home/hanslovskyp/data/from-arlo/interpolated-combined/sample_*.n5',
+    '--data-provider=/groups/saalfeld/home/hanslovskyp/data/from-arlo/interpolated-combined/sample_*.n5:MASK=volumes/labels/mask-downsampled-75%-y:GLIA_MASK=volumes/labels/mask-downsampled-75%-y',
     '--log-level=DEBUG',
     '--training-directory=%s' % experiment_dir,
     '--meta-graph-filename=%s' % unet_meta,
@@ -42,9 +42,10 @@ train_net_argv = (
     '--save-checkpoint-every=200',
     '--pre-cache-num-workers=1',
     '--pre-cache-size=1',
-    '--snapshot-every=20',
+    '--snapshot-every=10',
     '--ignore-labels-for-slip',
-    '--grow-boundaries=0')
+    '--grow-boundaries=0',
+    '--mask-out-labels', '0')
 
 import logging
 logging.basicConfig()

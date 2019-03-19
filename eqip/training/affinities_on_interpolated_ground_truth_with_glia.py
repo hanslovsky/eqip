@@ -11,7 +11,7 @@ from fuse.map_numpy_array import MapNumpyArray
 logging.basicConfig(level=logging.INFO)
 _logger = logging.getLogger(__name__)
 
-from fuse import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment, NewKeyFromNumpyArray
+from fuse import ElasticAugment, Misalign, SimpleAugment, Snapshot, DefectAugment, NewKeyFromNumpyArray, MaskOutLabels
 from gunpowder import Hdf5Source, Coordinate, BatchRequest, Normalize, Pad, RandomLocation, Reject, \
     ArraySpec, IntensityAugment, RandomProvider, GrowBoundary, IntensityScaleShift, \
     PrintProfilingStats, build, PreCache, ArrayKey
@@ -31,7 +31,7 @@ import sys
 
 RAW_KEY              = gunpowder_utils.RAW_KEY
 DEFECT_MASK_KEY      = gunpowder_utils.DEFECT_MASK_KEY
-LABELS_KEY           = gunpowder_utils.NEURON_IDS_NO_GLIA_KEY
+LABELS_KEY           = gunpowder_utils.NEURON_IDS_KEY
 GT_MASK_KEY          = gunpowder_utils.MASK_KEY
 LOSS_GRADIENT_KEY    = gunpowder_utils.LOSS_GRADIENT_KEY
 AFFINITIES_KEY       = gunpowder_utils.AFFINITIES_KEY
@@ -83,6 +83,7 @@ def train_until(
         network_inputs,
         ignore_labels_for_slip,
         grow_boundaries,
+        mask_out_labels,
         snapshot_dir):
 
     ignore_keys_for_slip = (LABELS_KEY, GT_MASK_KEY, GT_GLIA_KEY, GLIA_MASK_KEY, UNLABELED_KEY) if ignore_labels_for_slip else ()
@@ -219,6 +220,8 @@ def train_until(
 
     train_pipeline += NewKeyFromNumpyArray(lambda array: 1 - array, GT_GLIA_KEY, UNLABELED_KEY)
 
+    if len(mask_out_labels) > 0:
+        train_pipeline += MaskOutLabels(label_key=LABELS_KEY, mask_key=GT_MASK_KEY, ids_to_be_masked=mask_out_labels)
 
     # labels_mask: anything that connects into labels_mask will be zeroed out
     # unlabelled: anyhing that points into unlabeled will have zero affinity;
@@ -247,7 +250,7 @@ def train_until(
 
     if balance_labels:
         train_pipeline += BalanceLabels(labels=GT_AFFINITIES_KEY, scales=AFFINITIES_SCALE_KEY, mask=AFFINITIES_MASK_KEY)
-        snapshot_datasets[AFFINITIES_SCALE_KEY] = 'masks/affinitiy-scale'
+        snapshot_datasets[AFFINITIES_SCALE_KEY] = 'masks/affinity-scale'
     train_pipeline += BalanceLabels(labels=GT_GLIA_KEY, scales=GLIA_SCALE_KEY, mask=GLIA_MASK_KEY)
     snapshot_datasets[GLIA_SCALE_KEY] = 'masks/glia-scale'
 
@@ -309,11 +312,11 @@ def train(argv=sys.argv[1:]):
         file_pattern = '*'
         return '{}:{}={}:{}={}:{}={}:{}={}:{}={}'.format(
             os.path.join(data_dir, file_pattern),
-            'RAW',               gunpowder_utils.DEFAULT_PATHS['raw'],
-            'NEURON_IDS_NOGLIA', gunpowder_utils.DEFAULT_PATHS['neuron_ids_noglia'],
-            'MASK',              'volumes/labels/mask-downsampled',
-            'GLIA_MASK',         'volumes/labels/mask-downsampled',
-            'GT_GLIA',           gunpowder_utils.DEFAULT_PATHS['gt_glia'])
+            'RAW',        gunpowder_utils.DEFAULT_PATHS['raw'],
+            'NEURON_IDS', gunpowder_utils.DEFAULT_PATHS['neuron_ids'],
+            'MASK',       'volumes/labels/mask-downsampled-75%-y',
+            'GLIA_MASK',  'volumes/labels/mask-downsampled-75%-y',
+            'GT_GLIA',    gunpowder_utils.DEFAULT_PATHS['gt_glia'])
 
     default_data_provider_string = make_default_data_provider_string()
 
@@ -335,7 +338,8 @@ def train(argv=sys.argv[1:]):
     parser.add_argument('--affinity-neighborhood-y', nargs='+', type=int, default=(-1,))
     parser.add_argument('--affinity-neighborhood-z', nargs='+', type=int, default=(-1,))
     parser.add_argument('--grow-boundaries', metavar='STEPS', type=int, default=0, help='Grow boundaries for STEPS if larger than 0.')
-    parser.add_argument('--data-provider', metavar='GLOB_PATTERN[:raw=<dataset>[:neuron_ids_noglia=<dataset>[:mask=<dataset>[:glia_gt=<dataset>]]]]', default=(default_data_provider_string,), nargs='+', help='Add data provider.')
+    parser.add_argument('--data-provider', metavar='GLOB_PATTERN[:raw=<dataset>[:neuron_ids=<dataset>[:mask=<dataset>[:glia_gt=<dataset>]]]]', default=(default_data_provider_string,), nargs='+', help='Add data provider.')
+    parser.add_argument('--mask-out-labels', nargs='+', default=(), type=int)
 
     args = parser.parse_args(argv)
     log_levels=dict(DEBUG=logging.DEBUG, INFO=logging.INFO, WARN=logging.WARN, ERROR=logging.ERROR, CRITICAL=logging.CRITICAL)
@@ -360,7 +364,7 @@ def train(argv=sys.argv[1:]):
     logging.basicConfig(level=log_levels[args.log_level])
 
     _logger.info('Got data providers from user: %s', args.data_provider)
-    data_providers = gunpowder_utils.make_data_providers(*args.data_provider, required_paths=('raw', 'neuron_ids_noglia', 'mask', 'glia_mask', 'gt_glia'))
+    data_providers = gunpowder_utils.make_data_providers(*args.data_provider, required_paths=('raw', 'neuron_ids', 'mask', 'glia_mask', 'gt_glia'))
     _logger.info("Data providers: %s'", data_providers)
 
 
@@ -410,7 +414,8 @@ def train(argv=sys.argv[1:]):
             network_inputs=inputs,
             ignore_labels_for_slip=args.ignore_labels_for_slip,
             grow_boundaries=args.grow_boundaries,
-            snapshot_dir=snapshot_dir)
+            snapshot_dir=snapshot_dir,
+            mask_out_labels=args.mask_out_labels)
 
     if tf.train.latest_checkpoint('.') and int(tf.train.latest_checkpoint('.').split('_')[-1]) < args.mse_iterations:
         raise Exception("Inconsistency!")
@@ -444,4 +449,5 @@ def train(argv=sys.argv[1:]):
         network_inputs=inputs,
         ignore_labels_for_slip=args.ignore_labels_for_slip,
         grow_boundaries=args.grow_boundaries,
-        snapshot_dir=snapshot_dir)
+        snapshot_dir=snapshot_dir,
+        mask_out_labels=args.mask_out_labels)

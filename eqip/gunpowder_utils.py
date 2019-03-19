@@ -13,6 +13,7 @@ from fuse import Z5Source
 RAW_KEY                = ArrayKey('RAW')
 DEFECT_MASK_KEY        = ArrayKey('DEFECT_MASK')
 LABELS_KEY             = ArrayKey('LABELS')
+NEURON_IDS_KEY         = ArrayKey('NEURON_IDS')
 NEURON_IDS_NO_GLIA_KEY = ArrayKey('NEURON_IDS_NOGLIA')
 MASK_KEY               = ArrayKey('MASK')
 TRAINING_MASK_KEY      = ArrayKey('TRAINING_MASK')
@@ -35,6 +36,7 @@ _logger.info('Lower key identifier to key mapping: %s', _lower_key_identifier_to
 DEFAULT_PATHS = {
     RAW_KEY.identifier.lower()                : 'volumes/raw',
     LABELS_KEY.identifier.lower()             : 'volumes/labels/neuron_ids-downsampled',
+    NEURON_IDS_KEY.identifier.lower()         : 'volumes/labels/neuron_ids-downsampled',
     MASK_KEY.identifier.lower()               : 'volumes/labels/mask-downsampled',
     GT_GLIA_KEY.identifier.lower()            : 'volumes/labels/glia-downsampled',
     GLIA_MASK_KEY.identifier.lower()          : 'volumes/labels/mask-downsampled',
