@@ -23,6 +23,9 @@ class _Version(object):
     def version(self):
         return __version__
 
+    def is_release(self):
+        return self.tag() == ''
+
     def __str__(self):
         return self.version()
 
