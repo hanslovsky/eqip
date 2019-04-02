@@ -275,15 +275,24 @@ def _create_setup(experiment_dir):
     setup_dir = os.path.join(experiment_dir, str(setup_id))
 
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--affinity-neighborhood-x', required=True, nargs='+', type=int)
-    parser.add_argument('--affinity-neighborhood-y', required=True, nargs='+', type=int)
-    parser.add_argument('--affinity-neighborhood-z', required=True, nargs='+', type=int)
-    parser.add_argument('--mse-iterations', required=True, type=lambda arg: bounded_integer(arg, lower=0))
-    parser.add_argument('--malis-iterations', required=True, type=lambda arg: bounded_integer(arg, lower=0))
-    parser.add_argument('--data-provider', required=False, default=os.path.join(experiment_dir, 'data/*:MASK=volumes/labels/mask-downsampled-75%-y:GLIA_MASK=volumes/labels/mask-downsampled-75%-y'))
-    parser.add_argument('--log-level', default='INFO', choices=('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'))
-    parser.add_argument('--additional-pip-packages', nargs='+', default=())
+    with open(os.path.join(experiment_dir, 'name'), 'r') as f:
+        experiment_name = f.readline().strip()
+
+
+    parser = argparse.ArgumentParser(description='Create new setup for experiment `%s\'. '
+                                                 'Unknown arguments will be collected and passed to '
+                                                 '`train-affinities-on-interpolated-ground-truth-with-glia\' '
+                                                 'as additional arguments. See '
+                                                 '`train-affinities-on-interpolated-ground-truth-with-glia --help\' '
+                                                 'for details and avoid duplicate arguments.' % experiment_name)
+    parser.add_argument('--affinity-neighborhood-x', required=True, nargs='+', type=int, help='Affinity ranges for x-axis of data.')
+    parser.add_argument('--affinity-neighborhood-y', required=True, nargs='+', type=int, help='Affinity ranges for y-axis of data.')
+    parser.add_argument('--affinity-neighborhood-z', required=True, nargs='+', type=int, help='Affinity ranges for z-axis of data.')
+    parser.add_argument('--mse-iterations', required=True, type=lambda arg: bounded_integer(arg, lower=0), help='Number of iterations of training with mean squared error loss.')
+    parser.add_argument('--malis-iterations', required=True, type=lambda arg: bounded_integer(arg, lower=0), help='Number of iterations of training with malis loss.')
+    parser.add_argument('--data-provider', required=False, default=os.path.join(experiment_dir, 'data/*:MASK=volumes/labels/mask-downsampled-75%-y:GLIA_MASK=volumes/labels/mask-downsampled-75%-y'), help='Specify data providers if other than EXPERIMENT_DIR/data/*')
+    parser.add_argument('--log-level', default='INFO', choices=('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'), help='Set log level for setup creation.')
+    parser.add_argument('--additional-pip-packages', nargs='+', default=(), help='Install additional packages through pip. Experiment conda environment will be cloned instead of sym-linked.')
 
     args, unknown = parser.parse_known_args()
     logging.basicConfig(level=logging.getLevelName(args.log_level))
