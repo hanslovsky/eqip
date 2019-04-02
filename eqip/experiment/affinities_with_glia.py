@@ -8,6 +8,7 @@ import stat
 import sys
 
 from ..conda import clone_eqip_environment, create_eqip_environment, default_revisions
+from ..version_info import _version as version
 
 _CREATE_SETUP_TEMPLATE = """#!/usr/bin/env python3
 
@@ -390,14 +391,14 @@ def create_experiment(
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('path')
-    parser.add_argument('--experiment-name', required=False, help='Defaults to basename of PATH')
-    parser.add_argument('--data-pattern', required=True)
-    parser.add_argument('--copy-data', action='store_true')
-    parser.add_argument('--overwrite', action='store_true')
-    parser.add_argument('--conda-sh', default='$HOME/miniconda3/etc/profile.d/conda.sh')
-    parser.add_argument('--eqip-revision', default=default_revisions['eqip'])
-    parser.add_argument('--log-level', default='INFO', choices=('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'))
+    parser.add_argument('path', metavar='PATH', help='Path to experiment directory')
+    parser.add_argument('--experiment-name', required=False, help='Defaults to basename of PATH.')
+    parser.add_argument('--data-pattern', required=True, metavar='PATTERN', help='Glob pattern specifying the data to be used. Files are sym-linked by default.')
+    parser.add_argument('--copy-data', action='store_true', help='Copy data instead of sym-linking.')
+    parser.add_argument('--overwrite', action='store_true', help='Overwrite experiment if it already exists')
+    parser.add_argument('--conda-sh', default='$HOME/miniconda3/etc/profile.d/conda.sh', help='Path to conda.sh. Defaults to $HOME/miniconda3/etc/profile.d/conda.sh')
+    parser.add_argument('--eqip-revision', default=default_revisions['eqip'], help='EQIP revision to use in experiment. Defaults to %s' % (version.version() if version.is_release() else 'latest master'))
+    parser.add_argument('--log-level', default='INFO', choices=('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'), help='Set log level for experiment creation.')
     return parser
 
 
