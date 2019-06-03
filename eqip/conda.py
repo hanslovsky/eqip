@@ -23,7 +23,7 @@ conda create \
       -y \
       python=3.6
 conda activate %(name)s
-pip install h5py scikit-image numpy scipy requests urllib3
+pip install h5py scikit-image numpy 'scipy>=1.1.0,<1.3.0' requests urllib3
 conda install -c conda-forge -y z5py gxx_linux-64 cython tensorflow-gpu=1.3
 pip install git+https://github.com/hanslovsky/eqip@%(eqip_revision)s
 '''

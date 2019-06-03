@@ -9,7 +9,7 @@ Dependencies are specified as `install_requires` in `setup.py`. Also needs `tens
 conda create -n eqip -c conda-forge -c cpape python=3.6 tensorflow-gpu=1.3
 conda activate eqip
 conda install -c conda-forge -c cpape pip z5py
-conda install -c conda-forge scikit-image numpy scipy
+conda install -c conda-forge scikit-image numpy 'scipy>=1.1.0,<1.3.0'
 conda install -c conda-forge h5py requests urllib3 idna
 conda install -c conda-forge cython
 conda install -c conda-forge pymongo

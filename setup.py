@@ -6,7 +6,7 @@ install_requires = [
     'pip>=18.1',
     'scikit-image>=0.14.1',
     'numpy>=1.15.4',
-    'scipy>=1.1.0',
+    'scipy>=1.1.0, <1.3.0',
     'malis-pre-release',
     'gunpowder @ git+https://github.com/funkey/gunpowder@721718b6569b47a2f5d5d6633c76c85f779e25c7',
     'daisy @ git+https://github.com/funkelab/daisy@41130e58582ae05d01d26261786de0cbafaa6482',
