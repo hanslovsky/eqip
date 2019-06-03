@@ -28,5 +28,5 @@ export VECLIB_MAXIMUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 ```
  
- [numpy/nump#11826](https://github.com/numpy/numpy/issues/11826)
+ [numpy/numpy#11826](https://github.com/numpy/numpy/issues/11826)
  
