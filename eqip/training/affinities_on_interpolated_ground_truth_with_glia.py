@@ -145,8 +145,7 @@ def train_until(
         RandomLocation() + # chose a random location inside the provided arrays
         Reject(mask=GT_MASK_KEY, min_masked=0.5) +
         Reject(mask=GLIA_MASK_KEY, min_masked=0.5) +
-        MapNumpyArray(lambda array: np.require(array, dtype=np.int64), GT_GLIA_KEY)
-        # NumpyRequire(GT_GLIA_KEY, dtype=np.int64) # this is necessary because gunpowder 1.3 only understands int64, not uint64
+        MapNumpyArray(lambda array: np.require(array, dtype=np.int64), GT_GLIA_KEY) # this is necessary because gunpowder 1.3 only understands int64, not uint64
 
         for provider in data_providers)
 
